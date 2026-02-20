@@ -33,10 +33,31 @@ Database bootstrap:
 ```bash
 source .venv/bin/activate
 alembic upgrade head
-python scripts/seed.py
+PYTHONPATH=. python scripts/seed.py
+PYTHONPATH=. python scripts/seed_demo_data.py
 ```
 
-## 3. Authentication flow
+## 3. Demo data for frontend
+
+Use these login users (already inserted):
+
+- `admin@bess.local / ChangeMe123!`
+- `factory.demo@bess.com / Factory@123`
+- `logistics.demo@bess.com / Logistics@123`
+- `customer.demo@bess.com / Customer@123`
+
+Demo BESS units (already inserted):
+
+- `DEMO-BESS-001` -> `FACTORY_REGISTERED`
+- `DEMO-BESS-002` -> `IN_TRANSIT`
+- `DEMO-BESS-003` -> `SITE_ARRIVED` (checklist partially completed)
+- `DEMO-BESS-004` -> `PRE_COMMISSION` (checklist in progress)
+
+Demo shipment:
+
+- `DEMO-SHP-001` -> `IN_TRANSIT`
+
+## 4. Authentication flow
 
 1. Register user
 - `POST /api/v1/auth/register`
@@ -54,7 +75,7 @@ Use token in all protected APIs:
 Authorization: Bearer <access_token>
 ```
 
-## 4. Full lifecycle flow (step-by-step)
+## 5. Full lifecycle flow (step-by-step)
 
 ### Step 1: Master data creation
 
@@ -70,14 +91,28 @@ Authorization: Bearer <access_token>
 4. Create product model
 - `POST /api/v1/master/product-models`
 
-### Step 2: Factory registration (QR generated)
+### Step 2: Factory registration (scan box data or auto-generate)
 
 1. Create BESS unit
 - `POST /api/v1/bess/`
-- Generates:
-  - `serial_number`
-  - QR PNG at `/media/qr/{serial}.png`
-  - `qr_code_url`
+- You can use either mode:
+  - **Scan/register mode (recommended for real hardware):** send scanned `serial_number`, set `regenerate_qr_png=false`, optionally send `existing_qr_code_url`
+  - **Auto mode:** skip `serial_number`, keep `regenerate_qr_png=true` and backend generates serial + QR PNG
+
+Example (scan/register mode):
+
+```json
+{
+  "serial_number": "BESS-BOX-00091",
+  "existing_qr_code_url": "https://vendor.example/qr/BESS-BOX-00091",
+  "regenerate_qr_png": false,
+  "product_model_id": 1,
+  "country_id": 1,
+  "city_id": 1,
+  "warehouse_id": 1,
+  "site_address": "Plant-1"
+}
+```
 
 2. Public QR scan endpoint
 - `GET /api/v1/bess/scan/{serial_number}`
@@ -156,7 +191,7 @@ Authorization: Bearer <access_token>
 1. Stage distribution report
 - `GET /api/v1/reports/`
 
-## 5. Core permission mapping (quick reference)
+## 6. Core permission mapping (quick reference)
 
 - BESS create: `bess:create`
 - BESS read: `bess:read`
@@ -168,7 +203,7 @@ Authorization: Bearer <access_token>
 - Reports: `report:view`
 - Super admin role management: `SUPER_ADMIN`
 
-## 6. Recommended API execution order for UAT
+## 7. Recommended API execution order for UAT
 
 1. `POST /api/v1/auth/login` (admin)
 2. `POST /api/v1/master/countries`

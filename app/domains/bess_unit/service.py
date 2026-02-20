@@ -19,6 +19,7 @@ from app.domains.master.models import City, Country, ProductModel
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, SITE_STAGES, STAGE_TRANSITIONS
 from app.shared.exceptions import (
+    APIConflictException,
     APINotFoundException,
     BESSNotFoundException,
     ChecklistIncompleteException,
@@ -75,8 +76,16 @@ async def create_bess_unit(db: AsyncSession, payload: BESSUnitCreate, current_us
     if not city:
         raise APINotFoundException("City not found")
 
-    serial_number = f"BESS-{uuid.uuid4().hex[:12].upper()}"
-    qr_code_url, _ = _ensure_qr_file(serial_number)
+    serial_number = payload.serial_number.strip().upper() if payload.serial_number else f"BESS-{uuid.uuid4().hex[:12].upper()}"
+    existing = await bess_repository.get_by_serial(db, serial_number)
+    if existing is not None:
+        raise APIConflictException(f"BESS unit with serial '{serial_number}' already exists")
+
+    qr_code_url: str | None
+    if payload.regenerate_qr_png:
+        qr_code_url, _ = _ensure_qr_file(serial_number)
+    else:
+        qr_code_url = payload.existing_qr_code_url
 
     async with atomic(db) as session:
         unit = BESSUnit(

@@ -1,0 +1,1227 @@
+{
+  "info": {
+    "_postman_id": "7f8a4b12-5f5c-4c98-9d3c-6f12ec0b1234",
+    "name": "Unity BESS Lifecycle API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "country_id",
+      "value": "1"
+    },
+    {
+      "key": "city_id",
+      "value": "1"
+    },
+    {
+      "key": "warehouse_id",
+      "value": "1"
+    },
+    {
+      "key": "product_model_id",
+      "value": "1"
+    },
+    {
+      "key": "bess_unit_id",
+      "value": ""
+    },
+    {
+      "key": "serial_number",
+      "value": "DEMO-BESS-003"
+    },
+    {
+      "key": "shipment_id",
+      "value": ""
+    },
+    {
+      "key": "engineer_id",
+      "value": "1"
+    },
+    {
+      "key": "assignment_id",
+      "value": ""
+    },
+    {
+      "key": "user_id",
+      "value": ""
+    },
+    {
+      "key": "role_id",
+      "value": ""
+    },
+    {
+      "key": "stage",
+      "value": "SITE_ARRIVED"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"frontend.user@bess.com\",\n  \"password\": \"Admin@1234\",\n  \"full_name\": \"Frontend User\",\n  \"phone\": \"9000000010\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/auth/register"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  if (data.tokens) {",
+                  "    pm.collectionVariables.set('access_token', data.tokens.access_token || '');",
+                  "    pm.collectionVariables.set('refresh_token', data.tokens.refresh_token || '');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', data.access_token || '');",
+                  "  pm.collectionVariables.set('refresh_token', data.refresh_token || '');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', data.access_token || '');",
+                  "  pm.collectionVariables.set('refresh_token', data.refresh_token || '');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RBAC Admin",
+      "item": [
+        {
+          "name": "List Roles",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/admin/roles?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"FRONTEND_DEMO_ROLE\",\n  \"description\": \"Demo role\",\n  \"permission_ids\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/admin/roles"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Role To User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_id\": {{role_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/admin/users/{{user_id}}/roles"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Role From User",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/admin/users/{{user_id}}/roles/{{role_id}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Master Data",
+      "item": [
+        {
+          "name": "List Countries",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/countries?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Country",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"France\",\n  \"code\": \"FR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/master/countries"
+          },
+          "response": []
+        },
+        {
+          "name": "List Cities",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/cities?country_id={{country_id}}&page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Create City",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Noida\",\n  \"country_id\": {{country_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/master/cities"
+          },
+          "response": []
+        },
+        {
+          "name": "List Warehouses",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/warehouses?city_id={{city_id}}&page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Warehouse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Noida Demo Warehouse\",\n  \"city_id\": {{city_id}},\n  \"address\": \"Sector 62\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/master/warehouses"
+          },
+          "response": []
+        },
+        {
+          "name": "List Product Models",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/product-models?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product Model",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_number\": \"UNITYESS-DEMO-300\",\n  \"capacity_kwh\": 300.0,\n  \"description\": \"Demo model\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/master/product-models"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "BESS Units",
+      "item": [
+        {
+          "name": "Create BESS Unit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial_number\": \"BESS-BOX-00091\",\n  \"existing_qr_code_url\": \"https://vendor.example/qr/BESS-BOX-00091\",\n  \"regenerate_qr_png\": false,\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": {{warehouse_id}},\n  \"site_address\": \"Demo Site A\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('bess_unit_id', data.id);",
+                  "  pm.collectionVariables.set('serial_number', data.serial_number);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List BESS Units",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Get BESS Unit By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Public Scan By Serial",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": "{{base_url}}/bess/scan/{{serial_number}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get BESS QR Code",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/qrcode"
+          },
+          "response": []
+        },
+        {
+          "name": "Update BESS Unit",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"site_address\": \"Updated Demo Site Address\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/{{bess_unit_id}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Transition BESS Stage",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to_stage\": \"SHIPMENT_ASSIGNED\",\n  \"notes\": \"Frontend demo transition\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/transition"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stage History",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/history"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Checklists",
+      "item": [
+        {
+          "name": "Get Checklist For Stage",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/{{stage}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Checklist Item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_checked\": true,\n  \"notes\": \"Done from Postman\",\n  \"photo_url\": \"https://example.com/photo.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/1"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Checklist",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/{{stage}}/validate"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shipments",
+      "item": [
+        {
+          "name": "Create Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipment_code\": \"SHP-FRONTEND-DEMO-001\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('shipment_id', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Shipments",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/shipments/?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign BESS To Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bess_unit_id\": {{bess_unit_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/units"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Shipment Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/status"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Engineers & Assignments",
+      "item": [
+        {
+          "name": "Create Engineer Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"employee_code\": \"FRONTEND-DEMO-ENG\",\n  \"specialization\": \"GENERAL\",\n  \"city_id\": {{city_id}},\n  \"country_id\": {{country_id}},\n  \"is_available\": true,\n  \"max_concurrent_assignments\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/engineers/"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('engineer_id', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Available Engineers",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/engineers/available?city_id={{city_id}}&stage=SITE_ARRIVED&page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "My Assignments",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/engineers/my-assignments?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Manual Assign Engineer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"engineer_id\": {{engineer_id}},\n  \"stage\": \"SITE_ARRIVED\",\n  \"notes\": \"Manual assignment from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/assign-engineer"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('assignment_id', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Assignments For BESS",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/assignments?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Accept Assignment",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/assignments/{{assignment_id}}/accept"
+          },
+          "response": []
+        },
+        {
+          "name": "Decline Assignment",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/assignments/{{assignment_id}}/decline"
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Assignment",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/assignments/{{assignment_id}}/complete"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Commissioning",
+      "item": [
+        {
+          "name": "Create Commissioning Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stage\": \"PRE_COMMISSION\",\n  \"status\": \"PASS\",\n  \"notes\": \"Pre-commission completed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/commissioning/{{bess_unit_id}}/records"
+          },
+          "response": []
+        },
+        {
+          "name": "List Commissioning Records",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/commissioning/{{bess_unit_id}}/records?page=1&size=20"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Stage Distribution Report",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/reports/?page=1&size=20"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Run Order - Happy Path",
+      "description": "Run this folder with Postman Collection Runner. It auto-chains requests and sets IDs/tokens.",
+      "item": [
+        {
+          "name": "Run 01 - Login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login success', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', data.access_token || '');",
+                  "pm.collectionVariables.set('refresh_token', data.refresh_token || '');",
+                  "postman.setNextRequest('Run 02 - List Product Models');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 02 - List Product Models",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/product-models?page=1&size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('product models success', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.items && data.items.length > 0) {",
+                  "  pm.collectionVariables.set('product_model_id', data.items[0].id);",
+                  "}",
+                  "postman.setNextRequest('Run 03 - List Countries');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 03 - List Countries",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/countries?page=1&size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('countries success', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.items && data.items.length > 0) {",
+                  "  const india = data.items.find(x => (x.code || '').toUpperCase() === 'IN');",
+                  "  pm.collectionVariables.set('country_id', (india ? india.id : data.items[0].id));",
+                  "}",
+                  "postman.setNextRequest('Run 04 - List Cities');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 04 - List Cities",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/cities?country_id={{country_id}}&page=1&size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('cities success', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.items && data.items.length > 0) {",
+                  "  const delhi = data.items.find(x => (x.name || '').toLowerCase() === 'delhi');",
+                  "  pm.collectionVariables.set('city_id', (delhi ? delhi.id : data.items[0].id));",
+                  "}",
+                  "postman.setNextRequest('Run 05 - List Warehouses');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 05 - List Warehouses",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/warehouses?city_id={{city_id}}&page=1&size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('warehouses success', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.items && data.items.length > 0) {",
+                  "  pm.collectionVariables.set('warehouse_id', data.items[0].id);",
+                  "}",
+                  "postman.setNextRequest('Run 06 - Create BESS Unit');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 06 - Create BESS Unit",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const serial = 'BESS-BOX-' + Date.now();",
+                  "pm.collectionVariables.set('serial_number_new', serial);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('create bess success', function () { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('bess_unit_id', data.id);",
+                  "pm.collectionVariables.set('serial_number', data.serial_number);",
+                  "postman.setNextRequest('Run 07 - Public Scan');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial_number\": \"{{serial_number_new}}\",\n  \"existing_qr_code_url\": \"https://vendor.example/qr/{{serial_number_new}}\",\n  \"regenerate_qr_png\": false,\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": {{warehouse_id}},\n  \"site_address\": \"Runner Demo Site\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/"
+          },
+          "response": []
+        },
+        {
+          "name": "Run 07 - Public Scan",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": "{{base_url}}/bess/scan/{{serial_number}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('scan success', function () { pm.response.to.have.status(200); });",
+                  "postman.setNextRequest('Run 08 - Create Shipment');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 08 - Create Shipment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('shipment_code_new', 'SHP-RUN-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('create shipment success', function () { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('shipment_id', data.id);",
+                  "postman.setNextRequest('Run 09 - Assign Unit To Shipment');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipment_code\": \"{{shipment_code_new}}\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/"
+          },
+          "response": []
+        },
+        {
+          "name": "Run 09 - Assign Unit To Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bess_unit_id\": {{bess_unit_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/units"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('assign unit success', function () { pm.response.to.have.status(204); });",
+                  "postman.setNextRequest('Run 10 - Update Shipment Status');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 10 - Update Shipment Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('shipment status success', function () { pm.response.to.have.status(200); });",
+                  "postman.setNextRequest('Run 11 - List BESS Units');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 11 - List BESS Units",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/?page=1&size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('list bess success', function () { pm.response.to.have.status(200); });",
+                  "postman.setNextRequest('Run 12 - Reports');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 12 - Reports",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/reports/?page=1&size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('reports success', function () { pm.response.to.have.status(200); });",
+                  "postman.setNextRequest(null);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}
