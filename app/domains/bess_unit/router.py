@@ -5,14 +5,17 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import AuthContext, get_auth_context, get_current_user, require_permission
+from app.core.dependencies import AuthContext, get_auth_context, require_permission
 from app.domains.auth.models import User
 from app.domains.bess_unit import service
 from app.domains.bess_unit.schemas import (
     BESSUnitCreate,
+    BESSUnitRegisterFromQR,
     BESSUnitRead,
     BESSUnitUpdate,
     PaginatedBESSUnits,
+    QRParseRequest,
+    QRParseResponse,
     ScanResponse,
     StageHistoryRead,
     StageTransitionRequest,
@@ -29,6 +32,24 @@ async def create_unit(
     current_user: User = Depends(require_permission("bess:create")),
 ) -> BESSUnitRead:
     obj = await service.create_bess_unit(db, payload, current_user)
+    return BESSUnitRead.model_validate(obj)
+
+
+@router.post("/qr/parse", response_model=QRParseResponse)
+async def parse_qr_payload(
+    payload: QRParseRequest,
+    _: User = Depends(require_permission("bess:create")),
+) -> QRParseResponse:
+    return await service.parse_qr_data(payload.qr_raw_data)
+
+
+@router.post("/register-from-qr", response_model=BESSUnitRead, status_code=status.HTTP_201_CREATED)
+async def register_unit_from_qr(
+    payload: BESSUnitRegisterFromQR,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("bess:create")),
+) -> BESSUnitRead:
+    obj = await service.register_bess_from_qr(db, payload, current_user)
     return BESSUnitRead.model_validate(obj)
 
 

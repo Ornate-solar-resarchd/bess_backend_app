@@ -9,7 +9,7 @@ import pytest
 
 from app.domains.bess_unit import service as bess_service
 from app.shared.enums import BESSStage
-from app.shared.exceptions import ChecklistIncompleteException, InvalidStageTransitionException
+from app.shared.exceptions import APIValidationException, ChecklistIncompleteException, InvalidStageTransitionException
 
 
 @asynccontextmanager
@@ -122,3 +122,25 @@ def test_ensure_qr_file_creates_png(tmp_path: object, monkeypatch: pytest.Monkey
     assert file_path.exists()
     assert file_path.suffix == ".png"
     assert datetime.now(UTC)
+
+
+@pytest.mark.asyncio
+async def test_parse_qr_data_extracts_factory_fields() -> None:
+    raw = (
+        "Product Model: HESS-215-418-EU-IN\n"
+        "Made Date: 2026.1\n"
+        "Factory Code: EESB2LFPL8001331215418260001"
+    )
+    result = await bess_service.parse_qr_data(raw)
+    assert result.serial_number == "EESB2LFPL8001331215418260001"
+    assert result.model_number == "HESS-215-418-EU-IN"
+    assert result.can_register is True
+    assert result.manufactured_date is not None
+    assert result.manufactured_date.year == 2026
+    assert result.manufactured_date.month == 1
+
+
+@pytest.mark.asyncio
+async def test_parse_qr_data_raises_on_empty_payload() -> None:
+    with pytest.raises(APIValidationException):
+        await bess_service.parse_qr_data("   ")

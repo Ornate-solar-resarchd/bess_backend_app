@@ -1,0 +1,316 @@
+{
+  "SITE_ARRIVED": [
+    {
+      "item_text": "Inspect unit for physical damage",
+      "description": "Visual inspection on all cabinet sides and doors before unloading.",
+      "is_mandatory": true,
+      "requires_photo": true
+    },
+    {
+      "item_text": "Verify serial number matches delivery note",
+      "description": "Match factory serial/QR with delivery and dispatch documents.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Confirm correct unit delivered to correct site",
+      "description": "Cross-check project/site code and customer order details.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "CIVIL_INSTALLATION": [
+    {
+      "item_text": "Foundation >=800x800mm concrete pad confirmed",
+      "description": "Verify pad dimensions and compressive quality before placement.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Ground level within +/-5mm tolerance (spirit level)",
+      "description": "Check level in both axes using spirit level.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "BESS cabinet placed per layout drawing",
+      "description": "Position cabinet based on approved installation layout.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Cabinet secured with M24 anchor bolts to specified torque",
+      "description": "Confirm anchor quantity and torque values as per installation manual.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Minimum 1000mm clearance on all 4 sides confirmed",
+      "description": "Keep service and airflow clearance on all sides.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Anti-vibration pads installed under cabinet",
+      "description": "Ensure anti-vibration support is installed as required.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Post-placement photo captured",
+      "description": "Capture cabinet placement proof photo after alignment and anchoring.",
+      "is_mandatory": true,
+      "requires_photo": true
+    }
+  ],
+  "DC_INSTALLATION": [
+    {
+      "item_text": "All DC breakers confirmed OFF before wiring",
+      "description": "Verify zero-energy condition before touching DC wiring.",
+      "safety_warning": "Electrocution risk",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Battery cluster cables connected per wiring diagram",
+      "description": "Follow polarity and routing exactly as the wiring diagram.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Busbar bolts torqued to spec - blue pen mark by installer",
+      "description": "Installer torque-check and mark each busbar bolt.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Inspector re-torque verified - red pen mark applied",
+      "description": "Independent QC re-check torque and mark verification.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "No loose DC connections found",
+      "description": "Final hand-check and visual check before energization.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Anti-static gloves worn throughout",
+      "description": "Use ESD-safe handling while working on sensitive boards.",
+      "safety_warning": "ESD damage risk",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "BMU boards not touched bare-handed",
+      "description": "Avoid direct contact with BMU circuitry and connectors.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "AC_INSTALLATION": [
+    {
+      "item_text": "MCCB1 (AC circuit breaker) confirmed OFF",
+      "description": "Lock-out/check breaker state before AC wiring.",
+      "safety_warning": "Electrocution risk",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "AC grid cables connected to combiner cabinet",
+      "description": "Verify terminal mapping and cable size.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Phase sequence verified A-B-C: 400V between phases",
+      "description": "Confirm sequence and line voltage with calibrated meter.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Phase-to-neutral verified: 230V",
+      "description": "Check phase-neutral voltage in permissible tolerance.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "PE grounding wire connected and secure",
+      "description": "Confirm earth continuity and terminal tightness.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "All cable entries sealed with sealing compound",
+      "description": "Seal entries for ingress protection and safety compliance.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "No cables routed through air inlet or outlet",
+      "description": "Ensure airflow path remains unobstructed.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Cables of different types separated >=30mm",
+      "description": "Maintain routing separation and reduce interference.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "PRE_COMMISSION": [
+    {
+      "item_text": "All wiring connections verified correct",
+      "description": "Pre-energization cross-check for all power and control wiring.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "BMS<->EMS communication cables connected",
+      "description": "Verify communication cable termination and link health.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "No loose connections throughout the entire unit",
+      "description": "Final full-unit mechanical connection check.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "AC surge protector indicator is GREEN",
+      "description": "Confirm surge protector serviceable status.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "UPS functional and output confirmed",
+      "description": "Check UPS operation and output presence.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "CO2 fire extinguisher present on site",
+      "description": "Verify fire safety readiness near equipment.",
+      "safety_warning": "Fire risk",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "\"Do Not Close\" warning signs on all switches",
+      "description": "Temporary lockout warning during commissioning.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "COLD_COMMISSION": [
+    {
+      "item_text": "MCCB2 (auxiliary power) turned ON",
+      "description": "Enable auxiliary supply for startup checks.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "AC output button pressed - indicator GREEN",
+      "description": "Confirm AC output enable indication.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "UPS started successfully",
+      "description": "Record successful UPS startup.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "BMS contactor status: CLOSED after 30 seconds",
+      "description": "Verify timed contactor close sequence.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "PCS indicator illuminated",
+      "description": "Confirm PCS front indicator state.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "EMS web interface accessible",
+      "description": "Validate monitoring UI reachability.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Zero alarms present at startup",
+      "description": "Verify no active alarms before hot commissioning.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "HOT_COMMISSION": [
+    {
+      "item_text": "Charging test: SOC increasing confirmed",
+      "description": "Record evidence that SOC increases during charge cycle.",
+      "is_mandatory": true,
+      "requires_photo": true
+    },
+    {
+      "item_text": "Discharging test: load response verified",
+      "description": "Validate stable output under discharge/load conditions.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Grid synchronization: voltage and frequency within tolerance",
+      "description": "Confirm sync values within configured range.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "No alarms in EMS dashboard",
+      "description": "Check alarms and events for healthy operation.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Performance test completed and result logged",
+      "description": "Enter measured KPIs and final test outcome.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "FINAL_ACCEPTANCE": [
+    {
+      "item_text": "QA team sign-off obtained",
+      "description": "QA approval recorded for final handover.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Customer acceptance signature collected",
+      "description": "Capture signed acceptance proof.",
+      "is_mandatory": true,
+      "requires_photo": true
+    },
+    {
+      "item_text": "Warranty start date recorded in system",
+      "description": "Set warranty baseline date in backend records.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "All checklist documentation uploaded",
+      "description": "Ensure all stage documents are attached.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Full photo set of installation captured",
+      "description": "Store final site photo package.",
+      "is_mandatory": true,
+      "requires_photo": true
+    }
+  ]
+}

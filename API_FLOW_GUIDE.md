@@ -91,22 +91,36 @@ Authorization: Bearer <access_token>
 4. Create product model
 - `POST /api/v1/master/product-models`
 
-### Step 2: Factory registration (scan box data or auto-generate)
+### Step 2: Factory registration (existing hardware QR-first)
 
-1. Create BESS unit
-- `POST /api/v1/bess/`
-- You can use either mode:
-  - **Scan/register mode (recommended for real hardware):** send scanned `serial_number`, set `regenerate_qr_png=false`, optionally send `existing_qr_code_url`
-  - **Auto mode:** skip `serial_number`, keep `regenerate_qr_png=true` and backend generates serial + QR PNG
+Use this when box already has factory QR and serial from manufacturer.
 
-Example (scan/register mode):
+1. Parse raw QR text from scanner
+- `POST /api/v1/bess/qr/parse`
+- Send scanner output exactly as-is in `qr_raw_data`
+- Backend extracts `serial_number`, `model_number`, `manufactured_date`
+
+Example:
 
 ```json
 {
-  "serial_number": "BESS-BOX-00091",
-  "existing_qr_code_url": "https://vendor.example/qr/BESS-BOX-00091",
-  "regenerate_qr_png": false,
+  "qr_raw_data": "Product Model: HESS-215-418-EU-IN\nMade Date: 2026.1\nFactory Code: EESB2LFPL8001331215418260001"
+}
+```
+
+2. Register BESS from QR payload
+- `POST /api/v1/bess/register-from-qr`
+- Uses detected serial from QR (no new serial generated)
+- Does not regenerate QR PNG
+- If product model not resolvable from QR, pass `product_model_id`
+
+Example:
+
+```json
+{
+  "qr_raw_data": "Product Model: HESS-215-418-EU-IN\nMade Date: 2026.1\nFactory Code: EESB2LFPL8001331215418260001",
   "product_model_id": 1,
+  "existing_qr_code_url": "https://vendor.example/qr/EESB2LFPL8001331215418260001",
   "country_id": 1,
   "city_id": 1,
   "warehouse_id": 1,
@@ -114,11 +128,11 @@ Example (scan/register mode):
 }
 ```
 
-2. Public QR scan endpoint
+3. Public QR scan endpoint
 - `GET /api/v1/bess/scan/{serial_number}`
 - No auth required
 
-3. Download QR file
+4. Download QR file (only when backend-generated PNG exists)
 - `GET /api/v1/bess/{id}/qrcode`
 
 ### Step 3: Shipment flow

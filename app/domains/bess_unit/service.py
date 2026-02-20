@@ -1,18 +1,31 @@
 from __future__ import annotations
 
+import json
+import re
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import qrcode
 from fastapi.responses import FileResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.domains.auth.models import User
 from app.domains.bess_unit.models import AuditLog, BESSUnit, StageHistory
 from app.domains.bess_unit.repository import bess_repository
-from app.domains.bess_unit.schemas import BESSUnitCreate, BESSUnitUpdate, ChecklistScanItem, ScanEngineer, ScanResponse
+from app.domains.bess_unit.schemas import (
+    BESSUnitCreate,
+    BESSUnitRegisterFromQR,
+    BESSUnitUpdate,
+    ChecklistScanItem,
+    QRParseResponse,
+    ScanEngineer,
+    ScanResponse,
+)
 from app.domains.engineer.tasks import auto_assign_engineer_task
 from app.domains.installation.repository import checklist_repository
 from app.domains.master.models import City, Country, ProductModel
@@ -21,6 +34,7 @@ from app.shared.enums import BESSStage, SITE_STAGES, STAGE_TRANSITIONS
 from app.shared.exceptions import (
     APIConflictException,
     APINotFoundException,
+    APIValidationException,
     BESSNotFoundException,
     ChecklistIncompleteException,
     InvalidStageTransitionException,
@@ -38,6 +52,34 @@ STAGE_INSTRUCTIONS: dict[BESSStage, str] = {
     BESSStage.FINAL_ACCEPTANCE: "Collect QA and customer signoff with all documentation uploaded.",
     BESSStage.ACTIVE: "Unit is live and operating in production state.",
 }
+
+SERIAL_KEYS = (
+    "serial_number",
+    "serial",
+    "factory_code",
+    "factory_sn",
+    "sn",
+)
+MODEL_KEYS = (
+    "model_number",
+    "product_model",
+    "model",
+)
+MANUFACTURED_DATE_KEYS = (
+    "manufactured_date",
+    "manufacture_date",
+    "manufacturing_date",
+    "made_date",
+    "mfg_date",
+)
+
+
+@dataclass(slots=True)
+class ParsedQRPayload:
+    serial_number: str | None
+    model_number: str | None
+    manufactured_date: datetime | None
+    normalized_fields: dict[str, str]
 
 
 def _mask_phone(phone: str | None) -> str | None:
@@ -63,6 +105,214 @@ def _ensure_qr_file(serial_number: str) -> tuple[str, Path]:
     img = qrcode.make(encoded_url)
     img.save(file_path)
     return public_url, file_path
+
+
+def _normalize_key(key: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", key.strip().lower()).strip("_")
+
+
+def _parse_manufactured_date(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+
+    sanitized = (
+        raw.replace("年", "-")
+        .replace("月", "-")
+        .replace("日", "")
+        .replace("/", "-")
+        .replace(".", "-")
+    )
+    sanitized = re.sub(r"-+", "-", sanitized).strip("-")
+
+    for pattern in ("%Y-%m-%d", "%Y-%m", "%Y"):
+        try:
+            parsed = datetime.strptime(sanitized, pattern)
+            if pattern == "%Y":
+                parsed = parsed.replace(month=1, day=1)
+            elif pattern == "%Y-%m":
+                parsed = parsed.replace(day=1)
+            return parsed.replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    return None
+
+
+def _collect_fields(normalized_fields: dict[str, str], source: dict[str, object]) -> None:
+    for key, value in source.items():
+        normalized_key = _normalize_key(str(key))
+        if not normalized_key:
+            continue
+        if isinstance(value, dict):
+            for nested_key, nested_value in value.items():
+                nested = _normalize_key(str(nested_key))
+                if nested and nested_value is not None:
+                    normalized_fields.setdefault(nested, str(nested_value).strip())
+            continue
+        if value is None:
+            continue
+        normalized_fields.setdefault(normalized_key, str(value).strip())
+
+
+def _extract_url_fields(normalized_fields: dict[str, str], raw_data: str) -> str | None:
+    try:
+        parsed = urlparse(raw_data.strip())
+    except ValueError:
+        return None
+    if not parsed.scheme or not parsed.netloc:
+        return None
+
+    for key, values in parse_qs(parsed.query).items():
+        if values:
+            normalized_fields.setdefault(_normalize_key(key), values[0].strip())
+
+    path_segments = [segment for segment in parsed.path.split("/") if segment]
+    if not path_segments:
+        return None
+    candidate = path_segments[-1].strip()
+    if candidate and candidate.lower() not in {"scan", "bess", "api", "v1"}:
+        return candidate
+    return None
+
+
+def _extract_key_value_fields(normalized_fields: dict[str, str], raw_data: str) -> None:
+    for token in re.split(r"[\n;,|]+", raw_data):
+        part = token.strip()
+        if not part:
+            continue
+        if ":" in part:
+            key, value = part.split(":", 1)
+        elif "=" in part:
+            key, value = part.split("=", 1)
+        else:
+            continue
+        normalized_key = _normalize_key(key)
+        if normalized_key and value.strip():
+            normalized_fields.setdefault(normalized_key, value.strip())
+
+
+def _parse_qr_payload(raw_data: str) -> ParsedQRPayload:
+    raw = raw_data.strip()
+    if not raw:
+        raise APIValidationException("qr_raw_data cannot be empty")
+
+    normalized_fields: dict[str, str] = {}
+    serial_from_url = _extract_url_fields(normalized_fields, raw)
+
+    try:
+        json_payload = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        json_payload = None
+    if isinstance(json_payload, dict):
+        _collect_fields(normalized_fields, json_payload)
+
+    _extract_key_value_fields(normalized_fields, raw)
+
+    serial_number: str | None = None
+    for key in SERIAL_KEYS:
+        value = normalized_fields.get(key)
+        if value:
+            serial_number = value
+            break
+    if not serial_number and serial_from_url:
+        serial_number = serial_from_url
+    if not serial_number and re.fullmatch(r"[A-Za-z0-9._:-]{6,}", raw):
+        serial_number = raw
+
+    model_number: str | None = None
+    for key in MODEL_KEYS:
+        value = normalized_fields.get(key)
+        if value:
+            model_number = value
+            break
+
+    manufactured_date: datetime | None = None
+    for key in MANUFACTURED_DATE_KEYS:
+        manufactured_date = _parse_manufactured_date(normalized_fields.get(key))
+        if manufactured_date:
+            break
+
+    return ParsedQRPayload(
+        serial_number=serial_number.strip().upper() if serial_number else None,
+        model_number=model_number.strip().upper() if model_number else None,
+        manufactured_date=manufactured_date,
+        normalized_fields=normalized_fields,
+    )
+
+
+async def parse_qr_data(raw_data: str) -> QRParseResponse:
+    parsed = _parse_qr_payload(raw_data)
+    can_register = parsed.serial_number is not None
+    message = (
+        "QR parsed successfully; serial detected."
+        if can_register
+        else "Serial number not detected in QR payload; use serial_number_override."
+    )
+    return QRParseResponse(
+        serial_number=parsed.serial_number,
+        model_number=parsed.model_number,
+        manufactured_date=parsed.manufactured_date,
+        normalized_fields=parsed.normalized_fields,
+        can_register=can_register,
+        message=message,
+    )
+
+
+async def _resolve_product_model_id(
+    db: AsyncSession,
+    provided_product_model_id: int | None,
+    parsed_model_number: str | None,
+) -> int:
+    if provided_product_model_id is not None:
+        product_model = await db.get(ProductModel, provided_product_model_id)
+        if not product_model:
+            raise APINotFoundException("Product model not found")
+        return product_model.id
+
+    if parsed_model_number:
+        stmt = select(ProductModel).where(func.lower(ProductModel.model_number) == parsed_model_number.lower())
+        model = await db.scalar(stmt)
+        if model is not None:
+            return model.id
+
+    raise APIValidationException(
+        "Unable to resolve product model from QR data. Provide product_model_id in request."
+    )
+
+
+async def register_bess_from_qr(
+    db: AsyncSession,
+    payload: BESSUnitRegisterFromQR,
+    current_user: User,
+) -> BESSUnit:
+    parsed = _parse_qr_payload(payload.qr_raw_data)
+    serial_number = payload.serial_number_override.strip().upper() if payload.serial_number_override else parsed.serial_number
+    if not serial_number:
+        raise APIValidationException("Serial number not found in QR payload. Provide serial_number_override.")
+
+    product_model_id = await _resolve_product_model_id(db, payload.product_model_id, parsed.model_number)
+    manufactured_date = payload.manufactured_date or parsed.manufactured_date
+
+    return await create_bess_unit(
+        db,
+        BESSUnitCreate(
+            serial_number=serial_number,
+            existing_qr_code_url=payload.existing_qr_code_url,
+            regenerate_qr_png=False,
+            product_model_id=product_model_id,
+            country_id=payload.country_id,
+            city_id=payload.city_id,
+            warehouse_id=payload.warehouse_id,
+            site_address=payload.site_address,
+            site_latitude=payload.site_latitude,
+            site_longitude=payload.site_longitude,
+            customer_user_id=payload.customer_user_id,
+            manufactured_date=manufactured_date,
+        ),
+        current_user,
+    )
 
 
 async def create_bess_unit(db: AsyncSession, payload: BESSUnitCreate, current_user: User) -> BESSUnit:

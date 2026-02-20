@@ -74,6 +74,18 @@
     {
       "key": "stage",
       "value": "SITE_ARRIVED"
+    },
+    {
+      "key": "qr_raw_data",
+      "value": "Product Model: HESS-215-418-EU-IN\nMade Date: 2026.1\nFactory Code: EESB2LFPL8001331215418260001"
+    },
+    {
+      "key": "serial_number_override",
+      "value": ""
+    },
+    {
+      "key": "existing_qr_code_url",
+      "value": "https://vendor.example/qr/EESB2LFPL8001331215418260001"
     }
   ],
   "item": [
@@ -407,7 +419,82 @@
       "name": "BESS Units",
       "item": [
         {
-          "name": "Create BESS Unit",
+          "name": "Parse Factory QR Payload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/qr/parse"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  if (data.serial_number) pm.collectionVariables.set(\"serial_number\", data.serial_number);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Register BESS From Factory QR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\",\n  \"serial_number_override\": \"{{serial_number_override}}\",\n  \"existing_qr_code_url\": \"{{existing_qr_code_url}}\",\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": {{warehouse_id}},\n  \"site_address\": \"Demo Site A\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/register-from-qr"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set(\"bess_unit_id\", data.id);",
+                  "  pm.collectionVariables.set(\"serial_number\", data.serial_number);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create BESS Unit (Manual Fallback)",
           "request": {
             "method": "POST",
             "header": [
@@ -987,7 +1074,7 @@
                   "if (data.items && data.items.length > 0) {",
                   "  pm.collectionVariables.set('warehouse_id', data.items[0].id);",
                   "}",
-                  "postman.setNextRequest('Run 06 - Create BESS Unit');"
+                  "postman.setNextRequest('Run 06 - Parse QR Payload');"
                 ]
               }
             }
@@ -995,7 +1082,7 @@
           "response": []
         },
         {
-          "name": "Run 06 - Create BESS Unit",
+          "name": "Run 06 - Parse QR Payload",
           "event": [
             {
               "listen": "prerequest",
@@ -1003,7 +1090,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "const serial = 'BESS-BOX-' + Date.now();",
-                  "pm.collectionVariables.set('serial_number_new', serial);"
+                  "pm.collectionVariables.set('serial_number_new', serial);",
+                  "const raw = 'Product Model: HESS-215-418-EU-IN\\nMade Date: 2026.1\\nFactory Code: ' + serial;",
+                  "pm.collectionVariables.set('qr_raw_data', raw);",
+                  "pm.collectionVariables.set('existing_qr_code_url', 'https://vendor.example/qr/' + serial);"
                 ]
               }
             },
@@ -1012,11 +1102,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('create bess success', function () { pm.response.to.have.status(201); });",
+                  "pm.test('parse qr success', function () { pm.response.to.have.status(200); });",
                   "const data = pm.response.json();",
-                  "pm.collectionVariables.set('bess_unit_id', data.id);",
-                  "pm.collectionVariables.set('serial_number', data.serial_number);",
-                  "postman.setNextRequest('Run 07 - Public Scan');"
+                  "if (data.serial_number) { pm.collectionVariables.set('serial_number', data.serial_number); }",
+                  "postman.setNextRequest('Run 06.1 - Register BESS From QR');"
                 ]
               }
             }
@@ -1031,15 +1120,53 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"serial_number\": \"{{serial_number_new}}\",\n  \"existing_qr_code_url\": \"https://vendor.example/qr/{{serial_number_new}}\",\n  \"regenerate_qr_png\": false,\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": {{warehouse_id}},\n  \"site_address\": \"Runner Demo Site\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
+              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": "{{base_url}}/bess/"
+            "url": "{{base_url}}/bess/qr/parse"
           },
+          "response": []
+        },
+        {
+          "name": "Run 06.1 - Register BESS From QR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\",\n  \"existing_qr_code_url\": \"{{existing_qr_code_url}}\",\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": {{warehouse_id}},\n  \"site_address\": \"Runner Demo Site\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/register-from-qr"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('register from qr success', function () { pm.response.to.have.status(201); });",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('bess_unit_id', data.id);",
+                  "pm.collectionVariables.set('serial_number', data.serial_number);",
+                  "postman.setNextRequest('Run 07 - Public Scan');"
+                ]
+              }
+            }
+          ],
           "response": []
         },
         {

@@ -37,6 +37,34 @@ class BESSUnitCreate(BaseModel):
     manufactured_date: datetime | None = None
 
 
+class BESSUnitRegisterFromQR(BaseModel):
+    qr_raw_data: str
+    serial_number_override: str | None = None
+    existing_qr_code_url: str | None = None
+    product_model_id: int | None = None
+    country_id: int
+    city_id: int
+    warehouse_id: int | None = None
+    site_address: str | None = None
+    site_latitude: float | None = None
+    site_longitude: float | None = None
+    customer_user_id: int | None = None
+    manufactured_date: datetime | None = None
+
+
+class QRParseRequest(BaseModel):
+    qr_raw_data: str
+
+
+class QRParseResponse(BaseModel):
+    serial_number: str | None
+    model_number: str | None
+    manufactured_date: datetime | None
+    normalized_fields: dict[str, str]
+    can_register: bool
+    message: str
+
+
 class BESSUnitUpdate(BaseModel):
     country_id: int | None = None
     city_id: int | None = None
