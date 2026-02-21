@@ -157,6 +157,8 @@ Example:
 
 2. Mark checklist item checked/unchecked
 - `PATCH /api/v1/bess/{id}/checklist/{item_id}`
+- For installation and commissioning stages, photo upload is mandatory when marking an item as checked.
+- If `photo_url` is missing for a required item, backend returns HTTP `400`.
 
 3. Validate checklist completeness
 - `POST /api/v1/bess/{id}/checklist/{stage}/validate`

@@ -12,7 +12,17 @@ from app.domains.installation.repository import checklist_repository
 from app.domains.installation.schemas import ChecklistValidationResponse
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage
-from app.shared.exceptions import APINotFoundException, BESSNotFoundException
+from app.shared.exceptions import APIValidationException, APINotFoundException, BESSNotFoundException
+
+
+PHOTO_REQUIRED_STAGES = {
+    BESSStage.CIVIL_INSTALLATION,
+    BESSStage.DC_INSTALLATION,
+    BESSStage.AC_INSTALLATION,
+    BESSStage.PRE_COMMISSION,
+    BESSStage.COLD_COMMISSION,
+    BESSStage.HOT_COMMISSION,
+}
 
 
 async def get_stage_checklist(db: AsyncSession, bess_unit_id: int, stage: BESSStage):
@@ -39,6 +49,13 @@ async def update_checklist_item(
     if template is None:
         raise APINotFoundException("Checklist template item not found")
 
+    normalized_photo = photo_url.strip() if photo_url else None
+    is_photo_required = template.requires_photo or template.stage in PHOTO_REQUIRED_STAGES
+    if is_checked and is_photo_required and not normalized_photo:
+        raise APIValidationException(
+            f"Photo is mandatory for checklist item '{template.item_text}' in stage '{template.stage.value}'"
+        )
+
     async with atomic(db) as session:
         response = await checklist_repository.get_response(session, bess_unit_id, checklist_template_id)
         if response is None:
@@ -46,7 +63,7 @@ async def update_checklist_item(
 
         response.is_checked = is_checked
         response.notes = notes
-        response.photo_url = photo_url
+        response.photo_url = normalized_photo
         response.checked_by_user_id = current_user.id if is_checked else None
         response.checked_at = datetime.now(UTC) if is_checked else None
         await session.flush()

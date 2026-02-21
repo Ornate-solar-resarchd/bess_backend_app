@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.shared.enums import BESSStage
 
 
 class ChecklistItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     checklist_template_id: int
     stage: BESSStage
     item_text: str

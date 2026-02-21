@@ -17,6 +17,24 @@ from app.shared.enums import BESSStage
 router = APIRouter(prefix="/bess", tags=["Checklists"])
 
 
+def _to_checklist_item_read(item: object) -> ChecklistItemRead:
+    return ChecklistItemRead(
+        checklist_template_id=getattr(item, "checklist_template_id"),
+        stage=getattr(item, "stage"),
+        item_text=getattr(item, "item_text"),
+        description=getattr(item, "description"),
+        safety_warning=getattr(item, "safety_warning"),
+        is_mandatory=getattr(item, "is_mandatory"),
+        requires_photo=getattr(item, "requires_photo"),
+        order_index=getattr(item, "order_index"),
+        is_checked=getattr(item, "is_checked"),
+        checked_by_user_id=getattr(item, "checked_by_user_id"),
+        checked_at=getattr(item, "checked_at"),
+        notes=getattr(item, "notes"),
+        photo_url=getattr(item, "photo_url"),
+    )
+
+
 @router.get("/{bess_unit_id}/checklist/{stage}", response_model=list[ChecklistItemRead])
 async def get_checklist(
     bess_unit_id: int,
@@ -25,7 +43,7 @@ async def get_checklist(
     _: User = Depends(require_permission("checklist:read")),
 ) -> list[ChecklistItemRead]:
     items = await get_stage_checklist(db, bess_unit_id, stage)
-    return [ChecklistItemRead(**item.__dict__) for item in items]
+    return [_to_checklist_item_read(item) for item in items]
 
 
 @router.patch("/{bess_unit_id}/checklist/{item_id}", response_model=ChecklistItemRead)
@@ -63,7 +81,7 @@ async def patch_checklist(
             notes=response.notes,
             photo_url=response.photo_url,
         )
-    return ChecklistItemRead(**updated.__dict__)
+    return _to_checklist_item_read(updated)
 
 
 @router.post("/{bess_unit_id}/checklist/{stage}/validate", response_model=ChecklistValidationResponse)
