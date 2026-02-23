@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import Select, func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.shipment.models import Shipment, ShipmentDocument, ShipmentItem
@@ -41,6 +42,11 @@ class ShipmentRepository:
             ShipmentItem.bess_unit_id == bess_unit_id,
         )
         return (await db.scalar(stmt)) is not None
+
+    async def find_shipment_for_bess(self, db: AsyncSession, bess_unit_id: int) -> int | None:
+        stmt = select(ShipmentItem.shipment_id).where(ShipmentItem.bess_unit_id == bess_unit_id).limit(1)
+        result = await db.scalar(stmt)
+        return int(result) if result is not None else None
 
     async def count_shipment_items(self, db: AsyncSession, shipment_id: int) -> int:
         total = await db.scalar(select(func.count(ShipmentItem.id)).where(ShipmentItem.shipment_id == shipment_id))
@@ -114,6 +120,25 @@ class ShipmentRepository:
         )
         items = (await db.scalars(stmt)).all()
         return list(items)
+
+    async def list_shipments_for_bess(
+        self,
+        db: AsyncSession,
+        bess_unit_id: int,
+        page: int,
+        size: int,
+    ) -> tuple[int, list[ShipmentItem]]:
+        total = await db.scalar(select(func.count(ShipmentItem.id)).where(ShipmentItem.bess_unit_id == bess_unit_id))
+        stmt: Select[tuple[ShipmentItem]] = (
+            select(ShipmentItem)
+            .where(ShipmentItem.bess_unit_id == bess_unit_id)
+            .options(selectinload(ShipmentItem.shipment))
+            .order_by(ShipmentItem.id.desc())
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+        items = (await db.scalars(stmt)).all()
+        return int(total or 0), list(items)
 
 
 shipment_repository = ShipmentRepository()

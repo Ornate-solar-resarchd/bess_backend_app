@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.shared.enums import BESSStage
+from app.shared.enums import BESSStage, ShipmentStatus
 
 
 class NestedNamed(BaseModel):
@@ -143,6 +143,21 @@ class PaginatedStageCertificates(BaseModel):
 class PaginatedBESSUnits(BaseModel):
     total: int
     items: list[BESSUnitRead]
+    page: int
+    size: int
+
+
+class BESSShipmentRead(BaseModel):
+    shipment_id: int
+    shipment_code: str
+    shipment_status: ShipmentStatus
+    order_id: str | None
+    linked_at: datetime
+
+
+class PaginatedBESSShipments(BaseModel):
+    total: int
+    items: list[BESSShipmentRead]
     page: int
     size: int
 

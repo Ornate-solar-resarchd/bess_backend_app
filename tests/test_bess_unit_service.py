@@ -9,7 +9,12 @@ import pytest
 
 from app.domains.bess_unit import service as bess_service
 from app.shared.enums import BESSStage
-from app.shared.exceptions import APIValidationException, ChecklistIncompleteException, InvalidStageTransitionException
+from app.shared.exceptions import (
+    APIForbiddenException,
+    APIValidationException,
+    ChecklistIncompleteException,
+    InvalidStageTransitionException,
+)
 
 
 @asynccontextmanager
@@ -196,3 +201,50 @@ async def test_register_from_qr_rejects_warehouse_id_at_factory(
             payload=payload,
             current_user=SimpleNamespace(id=1),
         )
+
+
+@pytest.mark.asyncio
+async def test_list_bess_shipments_customer_scope_forbidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unit = SimpleNamespace(id=1, is_deleted=False, customer_user_id=99)
+    monkeypatch.setattr(bess_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+
+    with pytest.raises(APIForbiddenException):
+        await bess_service.list_bess_shipments(
+            db=object(),
+            bess_unit_id=1,
+            page=1,
+            size=20,
+            customer_user_id=10,
+        )
+
+
+@pytest.mark.asyncio
+async def test_list_bess_shipments_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unit = SimpleNamespace(id=1, is_deleted=False, customer_user_id=10)
+    link = SimpleNamespace(
+        shipment_id=2,
+        order_id="PO-1001",
+        created_at=datetime.now(UTC),
+        shipment=SimpleNamespace(shipment_code="SHP-2", status="CREATED"),
+    )
+    monkeypatch.setattr(bess_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(
+        bess_service.shipment_repository,
+        "list_shipments_for_bess",
+        AsyncMock(return_value=(1, [link])),
+    )
+
+    result = await bess_service.list_bess_shipments(
+        db=object(),
+        bess_unit_id=1,
+        page=1,
+        size=20,
+        customer_user_id=10,
+    )
+    assert result.total == 1
+    assert result.items[0].shipment_id == 2
+    assert result.items[0].order_id == "PO-1001"

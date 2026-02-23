@@ -158,6 +158,7 @@ Example:
 - Single add: `POST /api/v1/shipments/{id}/units`
 - Bulk add: `POST /api/v1/shipments/{id}/units/bulk`
 - Each item must have `order_id` (for PO/container traceability)
+- One BESS can be linked to only one shipment globally (409 if already linked elsewhere)
 - BESS stage moves to `SHIPMENT_ASSIGNED`
 
 Single add example:
@@ -208,6 +209,15 @@ Local storage path:
   - `PACKED` -> BESS `PACKED`
   - `IN_TRANSIT` -> BESS `IN_TRANSIT`
   - `ARRIVED` -> BESS `PORT_ARRIVED`
+
+5B. Fetch all shipments linked to one BESS
+- `GET /api/v1/bess/{bess_unit_id}/shipments?page=1&size=20`
+- Returns shipment linkage rows for that BESS (normally max 1 because of one-BESS-one-shipment rule):
+  - `shipment_id`
+  - `shipment_code`
+  - `shipment_status`
+  - `order_id`
+  - `linked_at`
 
 ### Step 4: Checklist + stage transition at site
 

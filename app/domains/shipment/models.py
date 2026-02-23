@@ -24,7 +24,10 @@ class Shipment(Base, TimestampMixin):
 
 class ShipmentItem(Base, TimestampMixin):
     __tablename__ = "shipment_items"
-    __table_args__ = (UniqueConstraint("shipment_id", "bess_unit_id", name="uq_shipment_item"),)
+    __table_args__ = (
+        UniqueConstraint("shipment_id", "bess_unit_id", name="uq_shipment_item"),
+        UniqueConstraint("bess_unit_id", name="uq_shipment_items_bess_unit_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     shipment_id: Mapped[int] = mapped_column(ForeignKey("shipments.id", ondelete="CASCADE"), nullable=False)

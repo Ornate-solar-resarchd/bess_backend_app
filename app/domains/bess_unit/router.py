@@ -13,6 +13,7 @@ from app.domains.bess_unit.schemas import (
     BESSUnitRegisterFromQR,
     BESSUnitRead,
     BESSUnitUpdate,
+    PaginatedBESSShipments,
     PaginatedBESSUnits,
     PaginatedStageCertificates,
     QRParseRequest,
@@ -108,6 +109,19 @@ async def list_units(
         page=page,
         size=size,
     )
+
+
+@router.get("/{bess_unit_id}/shipments", response_model=PaginatedBESSShipments)
+async def list_shipments_for_bess(
+    bess_unit_id: int,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    context: AuthContext = Depends(get_auth_context),
+    _: User = Depends(require_permission("bess:read")),
+) -> PaginatedBESSShipments:
+    customer_filter = context.user.id if "CUSTOMER" in context.roles else None
+    return await service.list_bess_shipments(db, bess_unit_id, page, size, customer_filter)
 
 
 @router.get("/{bess_unit_id}", response_model=BESSUnitRead)

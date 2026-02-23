@@ -110,6 +110,11 @@ async def assign_unit_to_shipment(
         raise APINotFoundException("BESS unit not found")
     if await shipment_repository.item_exists(db, shipment_id, bess_unit_id):
         raise APIConflictException("This BESS unit is already linked to this shipment")
+    existing_shipment_id = await shipment_repository.find_shipment_for_bess(db, bess_unit_id)
+    if existing_shipment_id is not None and existing_shipment_id != shipment_id:
+        raise APIConflictException(
+            f"BESS unit {bess_unit_id} is already linked to shipment {existing_shipment_id}"
+        )
     normalized_order_id = order_id.strip()
     if not normalized_order_id:
         raise APIValidationException("order_id is required")
@@ -165,6 +170,11 @@ async def assign_units_to_shipment_bulk(
             raise APINotFoundException(f"BESS unit not found: {item.bess_unit_id}")
         if await shipment_repository.item_exists(db, shipment_id, item.bess_unit_id):
             raise APIConflictException(f"BESS unit already linked to shipment: {item.bess_unit_id}")
+        existing_shipment_id = await shipment_repository.find_shipment_for_bess(db, item.bess_unit_id)
+        if existing_shipment_id is not None and existing_shipment_id != shipment_id:
+            raise APIConflictException(
+                f"BESS unit {item.bess_unit_id} is already linked to shipment {existing_shipment_id}"
+            )
 
     created_items = 0
     async with atomic(db) as session:

@@ -658,6 +658,14 @@
           ]
         },
         {
+          "name": "List Shipments For BESS",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/shipments?page=1&size=20"
+          },
+          "response": []
+        },
+        {
           "name": "Public Scan By Serial",
           "request": {
             "auth": {

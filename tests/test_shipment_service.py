@@ -40,6 +40,7 @@ async def test_assign_unit_to_shipment_requires_order_id(
     monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
     monkeypatch.setattr(shipment_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
     monkeypatch.setattr(shipment_service.shipment_repository, "item_exists", AsyncMock(return_value=False))
+    monkeypatch.setattr(shipment_service.shipment_repository, "find_shipment_for_bess", AsyncMock(return_value=None))
 
     with pytest.raises(APIValidationException):
         await shipment_service.assign_unit_to_shipment(
@@ -60,11 +61,33 @@ async def test_assign_unit_to_shipment_rejects_duplicate_item(
     monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
     monkeypatch.setattr(shipment_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
     monkeypatch.setattr(shipment_service.shipment_repository, "item_exists", AsyncMock(return_value=True))
+    monkeypatch.setattr(shipment_service.shipment_repository, "find_shipment_for_bess", AsyncMock(return_value=1))
 
     with pytest.raises(APIConflictException):
         await shipment_service.assign_unit_to_shipment(
             db=object(),
             shipment_id=1,
+            bess_unit_id=1,
+            order_id="PO-1",
+            current_user=SimpleNamespace(id=10),
+        )
+
+
+@pytest.mark.asyncio
+async def test_assign_unit_to_shipment_rejects_existing_other_shipment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(id=2)
+    unit = SimpleNamespace(id=1, is_deleted=False)
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+    monkeypatch.setattr(shipment_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(shipment_service.shipment_repository, "item_exists", AsyncMock(return_value=False))
+    monkeypatch.setattr(shipment_service.shipment_repository, "find_shipment_for_bess", AsyncMock(return_value=5))
+
+    with pytest.raises(APIConflictException):
+        await shipment_service.assign_unit_to_shipment(
+            db=object(),
+            shipment_id=2,
             bess_unit_id=1,
             order_id="PO-1",
             current_user=SimpleNamespace(id=10),
@@ -157,3 +180,24 @@ async def test_get_shipment_detail_returns_units_and_documents(
     assert result.shipment.id == 1
     assert result.units_total == 1
     assert result.documents_total == 1
+
+
+@pytest.mark.asyncio
+async def test_bulk_assign_rejects_existing_other_shipment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(id=7)
+    unit = SimpleNamespace(id=101, is_deleted=False)
+    payload = SimpleNamespace(items=[SimpleNamespace(bess_unit_id=101, order_id="PO-7")])
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+    monkeypatch.setattr(shipment_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(shipment_service.shipment_repository, "item_exists", AsyncMock(return_value=False))
+    monkeypatch.setattr(shipment_service.shipment_repository, "find_shipment_for_bess", AsyncMock(return_value=3))
+
+    with pytest.raises(APIConflictException):
+        await shipment_service.assign_units_to_shipment_bulk(
+            db=object(),
+            shipment_id=7,
+            payload=payload,
+            current_user=SimpleNamespace(id=99),
+        )

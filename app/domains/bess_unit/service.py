@@ -18,8 +18,10 @@ from app.domains.auth.models import User
 from app.domains.bess_unit.models import AuditLog, BESSUnit, StageCertificate, StageHistory
 from app.domains.bess_unit.repository import bess_repository
 from app.domains.bess_unit.schemas import (
+    BESSShipmentRead,
     BESSUnitCreate,
     BESSUnitRegisterFromQR,
+    PaginatedBESSShipments,
     PaginatedStageCertificates,
     StageCertificateCreate,
     StageCertificateRead,
@@ -32,10 +34,12 @@ from app.domains.bess_unit.schemas import (
 from app.domains.engineer.tasks import auto_assign_engineer_task
 from app.domains.installation.repository import checklist_repository
 from app.domains.master.models import City, Country, ProductModel
+from app.domains.shipment.repository import shipment_repository
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, SITE_STAGES, STAGE_TRANSITIONS
 from app.shared.exceptions import (
     APIConflictException,
+    APIForbiddenException,
     APINotFoundException,
     APIValidationException,
     BESSNotFoundException,
@@ -441,6 +445,33 @@ async def list_bess_units(
         serial=serial,
         customer_user_id=customer_user_id,
     )
+
+
+async def list_bess_shipments(
+    db: AsyncSession,
+    bess_unit_id: int,
+    page: int,
+    size: int,
+    customer_user_id: int | None,
+) -> PaginatedBESSShipments:
+    unit = await bess_repository.get_by_id(db, bess_unit_id)
+    if unit is None or unit.is_deleted:
+        raise BESSNotFoundException(bess_unit_id)
+    if customer_user_id is not None and unit.customer_user_id != customer_user_id:
+        raise APIForbiddenException("You are not allowed to view shipments for this BESS unit")
+
+    total, links = await shipment_repository.list_shipments_for_bess(db, bess_unit_id, page, size)
+    items = [
+        BESSShipmentRead(
+            shipment_id=link.shipment_id,
+            shipment_code=link.shipment.shipment_code,
+            shipment_status=link.shipment.status,
+            order_id=link.order_id,
+            linked_at=link.created_at,
+        )
+        for link in links
+    ]
+    return PaginatedBESSShipments(total=total, items=items, page=page, size=size)
 
 
 async def transition_stage(
