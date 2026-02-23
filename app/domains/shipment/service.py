@@ -9,10 +9,10 @@ from app.domains.bess_unit.repository import bess_repository
 from app.domains.master.models import Country
 from app.domains.shipment.models import Shipment, ShipmentItem
 from app.domains.shipment.repository import shipment_repository
-from app.domains.shipment.schemas import ShipmentCreate
+from app.domains.shipment.schemas import PaginatedShipmentItems, ShipmentCreate, ShipmentItemRead
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, ShipmentStatus
-from app.shared.exceptions import APIConflictException, APINotFoundException
+from app.shared.exceptions import APIConflictException, APINotFoundException, APIValidationException
 
 
 STATUS_TO_BESS_STAGE: dict[ShipmentStatus, BESSStage] = {
@@ -62,6 +62,7 @@ async def assign_unit_to_shipment(
     db: AsyncSession,
     shipment_id: int,
     bess_unit_id: int,
+    order_id: str,
     current_user: User,
 ):
     shipment = await shipment_repository.get_shipment(db, shipment_id)
@@ -71,9 +72,17 @@ async def assign_unit_to_shipment(
     unit = await bess_repository.get_by_id(db, bess_unit_id)
     if unit is None or unit.is_deleted:
         raise APINotFoundException("BESS unit not found")
+    normalized_order_id = order_id.strip()
+    if not normalized_order_id:
+        raise APIValidationException("order_id is required")
 
     async with atomic(db) as session:
-        item = await shipment_repository.add_unit_to_shipment(session, shipment_id, bess_unit_id)
+        item = await shipment_repository.add_unit_to_shipment(
+            session,
+            shipment_id,
+            bess_unit_id,
+            normalized_order_id,
+        )
         unit.current_stage = BESSStage.SHIPMENT_ASSIGNED
         await session.flush()
         await bess_repository.create_audit_log(
@@ -83,10 +92,32 @@ async def assign_unit_to_shipment(
                 action="SHIPMENT_ADD_UNIT",
                 entity_type="ShipmentItem",
                 entity_id=item.id,
-                payload_json={"shipment_id": shipment_id, "bess_unit_id": bess_unit_id},
+                payload_json={
+                    "shipment_id": shipment_id,
+                    "bess_unit_id": bess_unit_id,
+                    "order_id": normalized_order_id,
+                },
             ),
         )
     return item
+
+
+async def list_shipment_units(
+    db: AsyncSession,
+    shipment_id: int,
+    page: int,
+    size: int,
+) -> PaginatedShipmentItems:
+    shipment = await shipment_repository.get_shipment(db, shipment_id)
+    if shipment is None:
+        raise APINotFoundException("Shipment not found")
+    total, items = await shipment_repository.list_shipment_items(db, shipment_id, page, size)
+    return PaginatedShipmentItems(
+        total=total,
+        items=[ShipmentItemRead.model_validate(item) for item in items],
+        page=page,
+        size=size,
+    )
 
 
 async def update_shipment_status(

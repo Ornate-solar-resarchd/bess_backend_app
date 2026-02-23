@@ -14,9 +14,12 @@ from app.domains.bess_unit.schemas import (
     BESSUnitRead,
     BESSUnitUpdate,
     PaginatedBESSUnits,
+    PaginatedStageCertificates,
     QRParseRequest,
     QRParseResponse,
     ScanResponse,
+    StageCertificateCreate,
+    StageCertificateRead,
     StageHistoryRead,
     StageTransitionRequest,
 )
@@ -51,6 +54,29 @@ async def register_unit_from_qr(
 ) -> BESSUnitRead:
     obj = await service.register_bess_from_qr(db, payload, current_user)
     return BESSUnitRead.model_validate(obj)
+
+
+@router.post("/{bess_unit_id}/certificates", response_model=StageCertificateRead, status_code=status.HTTP_201_CREATED)
+async def add_certificate(
+    bess_unit_id: int,
+    payload: StageCertificateCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("bess:transition")),
+) -> StageCertificateRead:
+    cert = await service.add_stage_certificate(db, bess_unit_id, payload, current_user)
+    return StageCertificateRead.model_validate(cert)
+
+
+@router.get("/{bess_unit_id}/certificates", response_model=PaginatedStageCertificates)
+async def get_certificates(
+    bess_unit_id: int,
+    stage: BESSStage | None = None,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("bess:read")),
+) -> PaginatedStageCertificates:
+    return await service.list_stage_certificates(db, bess_unit_id, stage, page, size)
 
 
 @router.get("/", response_model=PaginatedBESSUnits)

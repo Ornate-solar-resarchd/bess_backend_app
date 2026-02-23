@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.bess_unit.models import AuditLog, BESSUnit, StageHistory
+from app.domains.bess_unit.models import AuditLog, BESSUnit, StageCertificate, StageHistory
 from app.shared.enums import BESSStage
 
 
@@ -74,6 +74,47 @@ class BESSRepository:
             .order_by(StageHistory.changed_at.desc(), StageHistory.id.desc())
         )
         return list((await db.scalars(stmt)).all())
+
+    async def create_stage_certificate(self, db: AsyncSession, cert: StageCertificate) -> StageCertificate:
+        db.add(cert)
+        await db.flush()
+        return cert
+
+    async def list_stage_certificates(
+        self,
+        db: AsyncSession,
+        bess_unit_id: int,
+        stage: BESSStage | None,
+        page: int,
+        size: int,
+    ) -> tuple[int, list[StageCertificate]]:
+        count_stmt = select(func.count(StageCertificate.id)).where(StageCertificate.bess_unit_id == bess_unit_id)
+        stmt: Select[tuple[StageCertificate]] = select(StageCertificate).where(StageCertificate.bess_unit_id == bess_unit_id)
+        if stage is not None:
+            count_stmt = count_stmt.where(StageCertificate.stage == stage)
+            stmt = stmt.where(StageCertificate.stage == stage)
+
+        total = int(await db.scalar(count_stmt) or 0)
+        items = (
+            await db.scalars(
+                stmt.order_by(StageCertificate.uploaded_at.desc(), StageCertificate.id.desc())
+                .offset((page - 1) * size)
+                .limit(size)
+            )
+        ).all()
+        return total, list(items)
+
+    async def count_stage_certificates(
+        self,
+        db: AsyncSession,
+        bess_unit_id: int,
+        stage: BESSStage,
+    ) -> int:
+        stmt = select(func.count(StageCertificate.id)).where(
+            StageCertificate.bess_unit_id == bess_unit_id,
+            StageCertificate.stage == stage,
+        )
+        return int(await db.scalar(stmt) or 0)
 
 
 bess_repository = BESSRepository()

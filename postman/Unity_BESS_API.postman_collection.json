@@ -86,6 +86,26 @@
     {
       "key": "existing_qr_code_url",
       "value": "https://vendor.example/qr/EESB2LFPL8001331215418260001"
+    },
+    {
+      "key": "order_id",
+      "value": "PO-UNITY-0001"
+    },
+    {
+      "key": "checklist_item_id",
+      "value": "1"
+    },
+    {
+      "key": "current_stage",
+      "value": ""
+    },
+    {
+      "key": "to_stage",
+      "value": "SHIPMENT_ASSIGNED"
+    },
+    {
+      "key": "all_complete",
+      "value": "false"
     }
   ],
   "item": [
@@ -467,7 +487,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\",\n  \"serial_number_override\": \"{{serial_number_override}}\",\n  \"existing_qr_code_url\": \"{{existing_qr_code_url}}\",\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": {{warehouse_id}},\n  \"site_address\": \"Demo Site A\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
+              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\",\n  \"serial_number_override\": \"{{serial_number_override}}\",\n  \"existing_qr_code_url\": \"{{existing_qr_code_url}}\",\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": null,\n  \"site_address\": \"Demo Site A\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -540,12 +560,78 @@
           "response": []
         },
         {
+          "name": "Add Stage Certificate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stage\": \"PORT_ARRIVED\",\n  \"certificate_name\": \"Port Clearance Document\",\n  \"certificate_url\": \"https://example.com/cert/port-clearance.pdf\",\n  \"notes\": \"Uploaded from logistics\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/certificates"
+          },
+          "response": []
+        },
+        {
+          "name": "List Stage Certificates",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/certificates?stage=PORT_ARRIVED&page=1&size=20"
+          },
+          "response": []
+        },
+        {
           "name": "Get BESS Unit By ID",
           "request": {
             "method": "GET",
             "url": "{{base_url}}/bess/{{bess_unit_id}}"
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  const current = data.current_stage || \"\";",
+                  "  pm.collectionVariables.set(\"current_stage\", current);",
+                  "  pm.collectionVariables.set(\"stage\", current);",
+                  "const stageFlow = {",
+                  "  FACTORY_REGISTERED: \"SHIPMENT_ASSIGNED\",",
+                  "  SHIPMENT_ASSIGNED: \"PACKED\",",
+                  "  PACKED: \"IN_TRANSIT\",",
+                  "  IN_TRANSIT: \"PORT_ARRIVED\",",
+                  "  PORT_ARRIVED: \"PORT_CLEARED\",",
+                  "  PORT_CLEARED: \"WAREHOUSE_STORED\",",
+                  "  WAREHOUSE_STORED: \"DISPATCHED_TO_SITE\",",
+                  "  DISPATCHED_TO_SITE: \"SITE_ARRIVED\",",
+                  "  SITE_ARRIVED: \"CIVIL_INSTALLATION\",",
+                  "  CIVIL_INSTALLATION: \"DC_INSTALLATION\",",
+                  "  DC_INSTALLATION: \"AC_INSTALLATION\",",
+                  "  AC_INSTALLATION: \"PRE_COMMISSION\",",
+                  "  PRE_COMMISSION: \"COLD_COMMISSION\",",
+                  "  COLD_COMMISSION: \"HOT_COMMISSION\",",
+                  "  HOT_COMMISSION: \"FINAL_ACCEPTANCE\",",
+                  "  FINAL_ACCEPTANCE: \"ACTIVE\"",
+                  "};",
+                  "  pm.collectionVariables.set(\"to_stage\", stageFlow[current] || \"\");",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Public Scan By Serial",
@@ -590,7 +676,7 @@
           "response": []
         },
         {
-          "name": "Transition BESS Stage",
+          "name": "Transition BESS Stage (After Validate)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -601,7 +687,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"to_stage\": \"SHIPMENT_ASSIGNED\",\n  \"notes\": \"Frontend demo transition\"\n}",
+              "raw": "{\n  \"to_stage\": \"{{to_stage}}\",\n  \"notes\": \"Frontend demo transition\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -610,7 +696,42 @@
             },
             "url": "{{base_url}}/bess/{{bess_unit_id}}/transition"
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  const current = data.current_stage || \"\";",
+                  "  pm.collectionVariables.set(\"current_stage\", current);",
+                  "  pm.collectionVariables.set(\"stage\", current);",
+                  "const stageFlow = {",
+                  "  FACTORY_REGISTERED: \"SHIPMENT_ASSIGNED\",",
+                  "  SHIPMENT_ASSIGNED: \"PACKED\",",
+                  "  PACKED: \"IN_TRANSIT\",",
+                  "  IN_TRANSIT: \"PORT_ARRIVED\",",
+                  "  PORT_ARRIVED: \"PORT_CLEARED\",",
+                  "  PORT_CLEARED: \"WAREHOUSE_STORED\",",
+                  "  WAREHOUSE_STORED: \"DISPATCHED_TO_SITE\",",
+                  "  DISPATCHED_TO_SITE: \"SITE_ARRIVED\",",
+                  "  SITE_ARRIVED: \"CIVIL_INSTALLATION\",",
+                  "  CIVIL_INSTALLATION: \"DC_INSTALLATION\",",
+                  "  DC_INSTALLATION: \"AC_INSTALLATION\",",
+                  "  AC_INSTALLATION: \"PRE_COMMISSION\",",
+                  "  PRE_COMMISSION: \"COLD_COMMISSION\",",
+                  "  COLD_COMMISSION: \"HOT_COMMISSION\",",
+                  "  HOT_COMMISSION: \"FINAL_ACCEPTANCE\",",
+                  "  FINAL_ACCEPTANCE: \"ACTIVE\"",
+                  "};",
+                  "  pm.collectionVariables.set(\"to_stage\", stageFlow[current] || \"\");",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Stage History",
@@ -631,7 +752,23 @@
             "method": "GET",
             "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/{{stage}}"
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const items = pm.response.json();",
+                  "  if (Array.isArray(items) && items.length > 0) {",
+                  "    pm.collectionVariables.set(\"checklist_item_id\", items[0].checklist_template_id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update Checklist Item",
@@ -652,7 +789,7 @@
                 }
               }
             },
-            "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/1"
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/{{checklist_item_id}}"
           },
           "response": []
         },
@@ -661,6 +798,28 @@
           "request": {
             "method": "POST",
             "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/{{stage}}/validate"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set(\"all_complete\", String(!!data.all_complete));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download Checklist PDF Report",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist-report/pdf"
           },
           "response": []
         }
@@ -726,7 +885,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"bess_unit_id\": {{bess_unit_id}}\n}",
+              "raw": "{\n  \"bess_unit_id\": {{bess_unit_id}},\n  \"order_id\": \"{{order_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -734,6 +893,14 @@
               }
             },
             "url": "{{base_url}}/shipments/{{shipment_id}}/units"
+          },
+          "response": []
+        },
+        {
+          "name": "List Shipment Units",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/shipments/{{shipment_id}}/units?page=1&size=20"
           },
           "response": []
         },
@@ -1143,7 +1310,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\",\n  \"existing_qr_code_url\": \"{{existing_qr_code_url}}\",\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": {{warehouse_id}},\n  \"site_address\": \"Runner Demo Site\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
+              "raw": "{\n  \"qr_raw_data\": \"{{qr_raw_data}}\",\n  \"existing_qr_code_url\": \"{{existing_qr_code_url}}\",\n  \"product_model_id\": {{product_model_id}},\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"warehouse_id\": null,\n  \"site_address\": \"Runner Demo Site\",\n  \"site_latitude\": 28.61,\n  \"site_longitude\": 77.20\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1250,7 +1417,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"bess_unit_id\": {{bess_unit_id}}\n}",
+              "raw": "{\n  \"bess_unit_id\": {{bess_unit_id}},\n  \"order_id\": \"PO-RUN-{{shipment_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1321,12 +1488,116 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('list bess success', function () { pm.response.to.have.status(200); });",
-                  "postman.setNextRequest('Run 12 - Reports');"
+                  "postman.setNextRequest('Run 11.1 - Get BESS By ID (Set Stage)');"
                 ]
               }
             }
           ],
           "response": []
+        },
+        {
+          "name": "Run 11.1 - Get BESS By ID (Set Stage)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('bess detail success', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "const current = data.current_stage || \"\";",
+                  "pm.collectionVariables.set(\"current_stage\", current);",
+                  "pm.collectionVariables.set(\"stage\", current);",
+                  "const stageFlow = {",
+                  "  FACTORY_REGISTERED: \"SHIPMENT_ASSIGNED\",",
+                  "  SHIPMENT_ASSIGNED: \"PACKED\",",
+                  "  PACKED: \"IN_TRANSIT\",",
+                  "  IN_TRANSIT: \"PORT_ARRIVED\",",
+                  "  PORT_ARRIVED: \"PORT_CLEARED\",",
+                  "  PORT_CLEARED: \"WAREHOUSE_STORED\",",
+                  "  WAREHOUSE_STORED: \"DISPATCHED_TO_SITE\",",
+                  "  DISPATCHED_TO_SITE: \"SITE_ARRIVED\",",
+                  "  SITE_ARRIVED: \"CIVIL_INSTALLATION\",",
+                  "  CIVIL_INSTALLATION: \"DC_INSTALLATION\",",
+                  "  DC_INSTALLATION: \"AC_INSTALLATION\",",
+                  "  AC_INSTALLATION: \"PRE_COMMISSION\",",
+                  "  PRE_COMMISSION: \"COLD_COMMISSION\",",
+                  "  COLD_COMMISSION: \"HOT_COMMISSION\",",
+                  "  HOT_COMMISSION: \"FINAL_ACCEPTANCE\",",
+                  "  FINAL_ACCEPTANCE: \"ACTIVE\"",
+                  "};",
+                  "pm.collectionVariables.set(\"to_stage\", stageFlow[current] || \"\");",
+                  "postman.setNextRequest('Run 11.2 - Validate Checklist For Current Stage');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Run 11.2 - Validate Checklist For Current Stage",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist/{{stage}}/validate"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('validate checklist success', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set(\"all_complete\", String(!!data.all_complete));",
+                  "if (data.all_complete) {",
+                  "  postman.setNextRequest('Run 11.3 - Transition To Next Stage');",
+                  "} else {",
+                  "  postman.setNextRequest('Run 12 - Reports');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Run 11.3 - Transition To Next Stage",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/transition",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to_stage\": \"{{to_stage}}\",\n  \"notes\": \"Runner transition after validation\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('transition success', function () { pm.response.to.have.status(200); });",
+                  "postman.setNextRequest('Run 12 - Reports');"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Run 12 - Reports",

@@ -15,11 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.domains.auth.models import User
-from app.domains.bess_unit.models import AuditLog, BESSUnit, StageHistory
+from app.domains.bess_unit.models import AuditLog, BESSUnit, StageCertificate, StageHistory
 from app.domains.bess_unit.repository import bess_repository
 from app.domains.bess_unit.schemas import (
     BESSUnitCreate,
     BESSUnitRegisterFromQR,
+    PaginatedStageCertificates,
+    StageCertificateCreate,
+    StageCertificateRead,
     BESSUnitUpdate,
     ChecklistScanItem,
     QRParseResponse,
@@ -51,6 +54,12 @@ STAGE_INSTRUCTIONS: dict[BESSStage, str] = {
     BESSStage.HOT_COMMISSION: "Run charge/discharge and grid sync test with performance logging.",
     BESSStage.FINAL_ACCEPTANCE: "Collect QA and customer signoff with all documentation uploaded.",
     BESSStage.ACTIVE: "Unit is live and operating in production state.",
+}
+
+LOGISTICS_CERT_REQUIRED_STAGES = {
+    BESSStage.PORT_ARRIVED,
+    BESSStage.PORT_CLEARED,
+    BESSStage.WAREHOUSE_STORED,
 }
 
 SERIAL_KEYS = (
@@ -295,6 +304,11 @@ async def register_bess_from_qr(
     product_model_id = await _resolve_product_model_id(db, payload.product_model_id, parsed.model_number)
     manufactured_date = payload.manufactured_date or parsed.manufactured_date
 
+    if payload.warehouse_id is not None:
+        raise APIValidationException(
+            "warehouse_id must be empty at factory registration. Set warehouse later when unit arrives."
+        )
+
     return await create_bess_unit(
         db,
         BESSUnitCreate(
@@ -304,7 +318,7 @@ async def register_bess_from_qr(
             product_model_id=product_model_id,
             country_id=payload.country_id,
             city_id=payload.city_id,
-            warehouse_id=payload.warehouse_id,
+            warehouse_id=None,
             site_address=payload.site_address,
             site_latitude=payload.site_latitude,
             site_longitude=payload.site_longitude,
@@ -445,6 +459,16 @@ async def transition_stage(
     if allowed_next != to_stage:
         raise InvalidStageTransitionException(from_stage, to_stage)
 
+    if from_stage in LOGISTICS_CERT_REQUIRED_STAGES:
+        cert_count = await bess_repository.count_stage_certificates(db, bess_unit_id, from_stage)
+        if cert_count < 1:
+            raise APIValidationException(
+                f"Certificate is required for stage '{from_stage.value}' before moving to '{to_stage.value}'."
+            )
+
+    if to_stage == BESSStage.WAREHOUSE_STORED and unit.warehouse_id is None:
+        raise APIValidationException("Set warehouse_id via PATCH /api/v1/bess/{id} before WAREHOUSE_STORED stage.")
+
     pending = await checklist_repository.get_incomplete_mandatory(db, bess_unit_id, unit.current_stage)
     if pending:
         raise ChecklistIncompleteException(pending)
@@ -481,6 +505,64 @@ async def transition_stage(
         auto_assign_engineer_task.delay(bess_unit_id, to_stage.value)
 
     return unit
+
+
+async def add_stage_certificate(
+    db: AsyncSession,
+    bess_unit_id: int,
+    payload: StageCertificateCreate,
+    current_user: User,
+) -> StageCertificate:
+    unit = await bess_repository.get_by_id(db, bess_unit_id)
+    if unit is None or unit.is_deleted:
+        raise BESSNotFoundException(bess_unit_id)
+
+    async with atomic(db) as session:
+        cert = await bess_repository.create_stage_certificate(
+            session,
+            StageCertificate(
+                bess_unit_id=bess_unit_id,
+                stage=payload.stage,
+                certificate_name=payload.certificate_name.strip(),
+                certificate_url=payload.certificate_url.strip(),
+                notes=payload.notes,
+                uploaded_by_user_id=current_user.id,
+            ),
+        )
+        await bess_repository.create_audit_log(
+            session,
+            AuditLog(
+                user_id=current_user.id,
+                action="STAGE_CERTIFICATE_ADD",
+                entity_type="StageCertificate",
+                entity_id=cert.id,
+                payload_json={
+                    "bess_unit_id": bess_unit_id,
+                    "stage": payload.stage.value,
+                    "certificate_name": payload.certificate_name,
+                },
+            ),
+        )
+    return cert
+
+
+async def list_stage_certificates(
+    db: AsyncSession,
+    bess_unit_id: int,
+    stage: BESSStage | None,
+    page: int,
+    size: int,
+) -> PaginatedStageCertificates:
+    unit = await bess_repository.get_by_id(db, bess_unit_id)
+    if unit is None or unit.is_deleted:
+        raise BESSNotFoundException(bess_unit_id)
+    total, items = await bess_repository.list_stage_certificates(db, bess_unit_id, stage, page, size)
+    return PaginatedStageCertificates(
+        total=total,
+        items=[StageCertificateRead.model_validate(item) for item in items],
+        page=page,
+        size=size,
+    )
 
 
 async def list_stage_history(db: AsyncSession, bess_unit_id: int) -> list[StageHistory]:

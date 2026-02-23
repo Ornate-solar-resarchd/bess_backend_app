@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -11,7 +12,12 @@ from app.domains.installation.schemas import (
     ChecklistUpdateRequest,
     ChecklistValidationResponse,
 )
-from app.domains.installation.service import get_stage_checklist, update_checklist_item, validate_stage_checklist
+from app.domains.installation.service import (
+    export_checklist_pdf,
+    get_stage_checklist,
+    update_checklist_item,
+    validate_stage_checklist,
+)
 from app.shared.enums import BESSStage
 
 router = APIRouter(prefix="/bess", tags=["Checklists"])
@@ -92,3 +98,13 @@ async def validate_checklist(
     _: User = Depends(require_permission("checklist:read")),
 ) -> ChecklistValidationResponse:
     return await validate_stage_checklist(db, bess_unit_id, stage)
+
+
+@router.get("/{bess_unit_id}/checklist-report/pdf", response_class=FileResponse)
+async def download_checklist_pdf(
+    bess_unit_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("checklist:read")),
+) -> FileResponse:
+    report = await export_checklist_pdf(db, bess_unit_id)
+    return FileResponse(path=report, media_type="application/pdf", filename=report.name)

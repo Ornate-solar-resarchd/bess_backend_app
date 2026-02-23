@@ -113,6 +113,33 @@ class StageHistoryRead(BaseModel):
     notes: str | None
 
 
+class StageCertificateCreate(BaseModel):
+    stage: BESSStage
+    certificate_name: str
+    certificate_url: str
+    notes: str | None = None
+
+
+class StageCertificateRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    bess_unit_id: int
+    stage: BESSStage
+    certificate_name: str
+    certificate_url: str
+    notes: str | None
+    uploaded_by_user_id: int | None
+    uploaded_at: datetime
+
+
+class PaginatedStageCertificates(BaseModel):
+    total: int
+    items: list[StageCertificateRead]
+    page: int
+    size: int
+
+
 class PaginatedBESSUnits(BaseModel):
     total: int
     items: list[BESSUnitRead]

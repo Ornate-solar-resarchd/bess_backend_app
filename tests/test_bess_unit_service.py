@@ -144,3 +144,55 @@ async def test_parse_qr_data_extracts_factory_fields() -> None:
 async def test_parse_qr_data_raises_on_empty_payload() -> None:
     with pytest.raises(APIValidationException):
         await bess_service.parse_qr_data("   ")
+
+
+@pytest.mark.asyncio
+async def test_transition_stage_requires_certificate_for_port_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unit = SimpleNamespace(
+        id=1,
+        current_stage=BESSStage.PORT_ARRIVED,
+        is_deleted=False,
+        is_active=False,
+        warehouse_id=1,
+    )
+    monkeypatch.setattr(bess_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(bess_service.bess_repository, "count_stage_certificates", AsyncMock(return_value=0))
+
+    with pytest.raises(APIValidationException):
+        await bess_service.transition_stage(
+            bess_unit_id=1,
+            to_stage=BESSStage.PORT_CLEARED,
+            notes="try move without cert",
+            current_user=SimpleNamespace(id=5),
+            db=object(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_register_from_qr_rejects_warehouse_id_at_factory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = SimpleNamespace(
+        qr_raw_data="Factory Code: TEST123456",
+        serial_number_override=None,
+        existing_qr_code_url=None,
+        product_model_id=1,
+        country_id=1,
+        city_id=1,
+        warehouse_id=1,
+        site_address=None,
+        site_latitude=None,
+        site_longitude=None,
+        customer_user_id=None,
+        manufactured_date=None,
+    )
+    monkeypatch.setattr(bess_service, "_resolve_product_model_id", AsyncMock(return_value=1))
+
+    with pytest.raises(APIValidationException):
+        await bess_service.register_bess_from_qr(
+            db=object(),
+            payload=payload,
+            current_user=SimpleNamespace(id=1),
+        )

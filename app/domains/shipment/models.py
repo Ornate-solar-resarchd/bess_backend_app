@@ -27,3 +27,4 @@ class ShipmentItem(Base, TimestampMixin):
     shipment_id: Mapped[int] = mapped_column(ForeignKey("shipments.id", ondelete="CASCADE"), nullable=False)
     shipment: Mapped[Shipment] = relationship(lazy="selectin")
     bess_unit_id: Mapped[int] = mapped_column(ForeignKey("bess_units.id"), nullable=False)
+    order_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)

@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.domains.auth.models import User
 from app.domains.shipment.schemas import (
+    PaginatedShipmentItems,
     PaginatedShipments,
     ShipmentCreate,
     ShipmentItemAssign,
@@ -16,6 +17,7 @@ from app.domains.shipment.schemas import (
 from app.domains.shipment.service import (
     assign_unit_to_shipment,
     create_shipment,
+    list_shipment_units,
     list_shipments,
     update_shipment_status,
 )
@@ -51,8 +53,19 @@ async def assign_unit_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_permission("shipment:manage")),
 ) -> Response:
-    await assign_unit_to_shipment(db, shipment_id, payload.bess_unit_id, current_user)
+    await assign_unit_to_shipment(db, shipment_id, payload.bess_unit_id, payload.order_id, current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{shipment_id}/units", response_model=PaginatedShipmentItems)
+async def list_shipment_units_endpoint(
+    shipment_id: int,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("shipment:read")),
+) -> PaginatedShipmentItems:
+    return await list_shipment_units(db, shipment_id, page, size)
 
 
 @router.patch("/{shipment_id}/status", response_model=ShipmentRead)

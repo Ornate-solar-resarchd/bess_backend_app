@@ -112,6 +112,7 @@ Example:
 - `POST /api/v1/bess/register-from-qr`
 - Uses detected serial from QR (no new serial generated)
 - Does not regenerate QR PNG
+- `warehouse_id` must be `null` at factory registration
 - If product model not resolvable from QR, pass `product_model_id`
 
 Example:
@@ -142,7 +143,20 @@ Example:
 
 2. Assign BESS to shipment
 - `POST /api/v1/shipments/{id}/units`
+- Payload must include `order_id` to bind BESS to purchase/order/container reference.
 - BESS stage moves to `SHIPMENT_ASSIGNED`
+
+Example:
+
+```json
+{
+  "bess_unit_id": 12,
+  "order_id": "PO-UNITY-0001"
+}
+```
+
+2B. List shipment units with order mapping
+- `GET /api/v1/shipments/{id}/units?page=1&size=20`
 
 3. Update shipment status
 - `PATCH /api/v1/shipments/{id}/status`
@@ -157,8 +171,8 @@ Example:
 
 2. Mark checklist item checked/unchecked
 - `PATCH /api/v1/bess/{id}/checklist/{item_id}`
-- For installation and commissioning stages, photo upload is mandatory when marking an item as checked.
-- If `photo_url` is missing for a required item, backend returns HTTP `400`.
+- Photo upload is mandatory for every checked checklist item.
+- If `photo_url` is missing when `is_checked=true`, backend returns HTTP `400`.
 
 3. Validate checklist completeness
 - `POST /api/v1/bess/{id}/checklist/{stage}/validate`
@@ -171,6 +185,23 @@ Example:
 
 5. View stage history
 - `GET /api/v1/bess/{id}/history`
+
+6. Download final checklist report (PDF)
+- `GET /api/v1/bess/{id}/checklist-report/pdf`
+- PDF is available only after all mandatory checklist items are complete.
+
+### Step 4B: Logistics stage certificates
+
+For key logistics stages, certificate upload is required before next transition:
+- `PORT_ARRIVED`
+- `PORT_CLEARED`
+- `WAREHOUSE_STORED`
+
+APIs:
+- Add certificate: `POST /api/v1/bess/{id}/certificates`
+- List certificates: `GET /api/v1/bess/{id}/certificates?stage=PORT_ARRIVED&page=1&size=20`
+
+If missing certificate at required logistics stage, transition API returns HTTP `400`.
 
 ### Step 5: Engineer assignment flow
 
