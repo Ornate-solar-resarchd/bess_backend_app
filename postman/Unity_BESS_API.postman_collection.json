@@ -106,6 +106,30 @@
     {
       "key": "all_complete",
       "value": "false"
+    },
+    {
+      "key": "expected_quantity",
+      "value": "2"
+    },
+    {
+      "key": "shipment_doc_file",
+      "value": "./media/demo/shipment-doc.pdf"
+    },
+    {
+      "key": "shipment_doc_type",
+      "value": "BOL"
+    },
+    {
+      "key": "shipment_doc_name",
+      "value": "Bill Of Lading"
+    },
+    {
+      "key": "shipment_doc_notes",
+      "value": "Container shipment document uploaded from frontend"
+    },
+    {
+      "key": "bess_unit_id_2",
+      "value": ""
     }
   ],
   "item": [
@@ -840,7 +864,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"shipment_code\": \"SHP-FRONTEND-DEMO-001\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}}\n}",
+              "raw": "{\n  \"shipment_code\": \"SHP-FRONTEND-DEMO-001\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}},\n  \"expected_quantity\": {{expected_quantity}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -874,6 +898,14 @@
           "response": []
         },
         {
+          "name": "Get Shipment Full Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/shipments/{{shipment_id}}"
+          },
+          "response": []
+        },
+        {
           "name": "Assign BESS To Shipment",
           "request": {
             "method": "POST",
@@ -897,6 +929,29 @@
           "response": []
         },
         {
+          "name": "Bulk Assign BESS To Shipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"bess_unit_id\": {{bess_unit_id}}, \"order_id\": \"{{order_id}}\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/units/bulk"
+          },
+          "response": []
+        },
+        {
           "name": "List Shipment Units",
           "request": {
             "method": "GET",
@@ -905,7 +960,48 @@
           "response": []
         },
         {
-          "name": "Update Shipment Status",
+          "name": "Upload Shipment Document",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{shipment_doc_file}}"
+                },
+                {
+                  "key": "document_type",
+                  "value": "{{shipment_doc_type}}",
+                  "type": "text"
+                },
+                {
+                  "key": "document_name",
+                  "value": "{{shipment_doc_name}}",
+                  "type": "text"
+                },
+                {
+                  "key": "notes",
+                  "value": "{{shipment_doc_notes}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/documents/upload"
+          },
+          "response": []
+        },
+        {
+          "name": "List Shipment Documents",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/shipments/{{shipment_id}}/documents?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Shipment Status (IN_TRANSIT)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1394,7 +1490,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"shipment_code\": \"{{shipment_code_new}}\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}}\n}",
+              "raw": "{\n  \"shipment_code\": \"{{shipment_code_new}}\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}},\n  \"expected_quantity\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1469,6 +1565,25 @@
                 "exec": [
                   "pm.test('shipment status success', function () { pm.response.to.have.status(200); });",
                   "postman.setNextRequest('Run 11 - List BESS Units');"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Run 10.1 - Get Shipment Full Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/shipments/{{shipment_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('shipment detail success', function () { pm.response.to.have.status(200); });"
                 ]
               }
             }

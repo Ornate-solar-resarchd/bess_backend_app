@@ -1,15 +1,30 @@
 from __future__ import annotations
 
+import re
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.domains.auth.models import User
 from app.domains.bess_unit.models import AuditLog
 from app.domains.bess_unit.repository import bess_repository
 from app.domains.master.models import Country
-from app.domains.shipment.models import Shipment, ShipmentItem
+from app.domains.shipment.models import Shipment, ShipmentDocument, ShipmentItem
 from app.domains.shipment.repository import shipment_repository
-from app.domains.shipment.schemas import PaginatedShipmentItems, ShipmentCreate, ShipmentItemRead
+from app.domains.shipment.schemas import (
+    PaginatedShipmentDocuments,
+    PaginatedShipmentItems,
+    ShipmentBulkItemAssign,
+    ShipmentCreate,
+    ShipmentDetailRead,
+    ShipmentDocumentRead,
+    ShipmentItemRead,
+    ShipmentRead,
+)
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, ShipmentStatus
 from app.shared.exceptions import APIConflictException, APINotFoundException, APIValidationException
@@ -20,6 +35,11 @@ STATUS_TO_BESS_STAGE: dict[ShipmentStatus, BESSStage] = {
     ShipmentStatus.IN_TRANSIT: BESSStage.IN_TRANSIT,
     ShipmentStatus.ARRIVED: BESSStage.PORT_ARRIVED,
 }
+
+
+def _sanitize_filename(raw_name: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._")
+    return cleaned or "document"
 
 
 async def create_shipment(db: AsyncSession, payload: ShipmentCreate, current_user: User):
@@ -38,6 +58,7 @@ async def create_shipment(db: AsyncSession, payload: ShipmentCreate, current_use
                 shipment_code=payload.shipment_code,
                 origin_country_id=payload.origin_country_id,
                 destination_country_id=payload.destination_country_id,
+                expected_quantity=payload.expected_quantity,
                 status=ShipmentStatus.CREATED,
             ),
         )
@@ -58,6 +79,21 @@ async def list_shipments(db: AsyncSession, page: int, size: int):
     return await shipment_repository.list_shipments(db, page, size)
 
 
+async def get_shipment_detail(db: AsyncSession, shipment_id: int) -> ShipmentDetailRead:
+    shipment = await shipment_repository.get_shipment(db, shipment_id)
+    if shipment is None:
+        raise APINotFoundException("Shipment not found")
+    units = await shipment_repository.list_all_shipment_items(db, shipment_id)
+    documents = await shipment_repository.list_all_documents(db, shipment_id)
+    return ShipmentDetailRead(
+        shipment=ShipmentRead.model_validate(shipment),
+        units_total=len(units),
+        units=[ShipmentItemRead.model_validate(item) for item in units],
+        documents_total=len(documents),
+        documents=[ShipmentDocumentRead.model_validate(item) for item in documents],
+    )
+
+
 async def assign_unit_to_shipment(
     db: AsyncSession,
     shipment_id: int,
@@ -72,6 +108,8 @@ async def assign_unit_to_shipment(
     unit = await bess_repository.get_by_id(db, bess_unit_id)
     if unit is None or unit.is_deleted:
         raise APINotFoundException("BESS unit not found")
+    if await shipment_repository.item_exists(db, shipment_id, bess_unit_id):
+        raise APIConflictException("This BESS unit is already linked to this shipment")
     normalized_order_id = order_id.strip()
     if not normalized_order_id:
         raise APIValidationException("order_id is required")
@@ -102,6 +140,74 @@ async def assign_unit_to_shipment(
     return item
 
 
+async def assign_units_to_shipment_bulk(
+    db: AsyncSession,
+    shipment_id: int,
+    payload: ShipmentBulkItemAssign,
+    current_user: User,
+) -> int:
+    shipment = await shipment_repository.get_shipment(db, shipment_id)
+    if shipment is None:
+        raise APINotFoundException("Shipment not found")
+    if not payload.items:
+        raise APIValidationException("items cannot be empty")
+
+    seen_bess_ids: set[int] = set()
+    for item in payload.items:
+        normalized_order_id = item.order_id.strip()
+        if not normalized_order_id:
+            raise APIValidationException("order_id is required for every item")
+        if item.bess_unit_id in seen_bess_ids:
+            raise APIValidationException(f"Duplicate bess_unit_id in request: {item.bess_unit_id}")
+        seen_bess_ids.add(item.bess_unit_id)
+        unit = await bess_repository.get_by_id(db, item.bess_unit_id)
+        if unit is None or unit.is_deleted:
+            raise APINotFoundException(f"BESS unit not found: {item.bess_unit_id}")
+        if await shipment_repository.item_exists(db, shipment_id, item.bess_unit_id):
+            raise APIConflictException(f"BESS unit already linked to shipment: {item.bess_unit_id}")
+
+    created_items = 0
+    async with atomic(db) as session:
+        for item in payload.items:
+            normalized_order_id = item.order_id.strip()
+            created = await shipment_repository.add_unit_to_shipment(
+                session,
+                shipment_id,
+                item.bess_unit_id,
+                normalized_order_id,
+            )
+            unit = await bess_repository.get_by_id(session, item.bess_unit_id)
+            if unit is not None and not unit.is_deleted:
+                unit.current_stage = BESSStage.SHIPMENT_ASSIGNED
+            created_items += 1
+            await bess_repository.create_audit_log(
+                session,
+                AuditLog(
+                    user_id=current_user.id,
+                    action="SHIPMENT_ADD_UNIT",
+                    entity_type="ShipmentItem",
+                    entity_id=created.id,
+                    payload_json={
+                        "shipment_id": shipment_id,
+                        "bess_unit_id": item.bess_unit_id,
+                        "order_id": normalized_order_id,
+                    },
+                ),
+            )
+        await session.flush()
+        await bess_repository.create_audit_log(
+            session,
+            AuditLog(
+                user_id=current_user.id,
+                action="SHIPMENT_BULK_ADD_UNITS",
+                entity_type="Shipment",
+                entity_id=shipment_id,
+                payload_json={"count": created_items},
+            ),
+        )
+    return created_items
+
+
 async def list_shipment_units(
     db: AsyncSession,
     shipment_id: int,
@@ -130,6 +236,16 @@ async def update_shipment_status(
     if shipment is None:
         raise APINotFoundException("Shipment not found")
 
+    if status == ShipmentStatus.PACKED:
+        item_count = await shipment_repository.count_shipment_items(db, shipment_id)
+        if item_count < shipment.expected_quantity:
+            raise APIConflictException(
+                f"Cannot mark PACKED. expected_quantity={shipment.expected_quantity}, assigned_units={item_count}"
+            )
+        doc_count = await shipment_repository.count_documents(db, shipment_id)
+        if doc_count < 1:
+            raise APIConflictException("Cannot mark PACKED. Upload shipment documents first.")
+
     async with atomic(db) as session:
         shipment.status = status
         await session.flush()
@@ -155,3 +271,83 @@ async def update_shipment_status(
         )
 
     return shipment
+
+
+async def upload_shipment_document(
+    db: AsyncSession,
+    shipment_id: int,
+    file: UploadFile,
+    document_type: str | None,
+    notes: str | None,
+    current_user: User,
+    document_name: str | None = None,
+) -> ShipmentDocument:
+    shipment = await shipment_repository.get_shipment(db, shipment_id)
+    if shipment is None:
+        raise APINotFoundException("Shipment not found")
+    if not file.filename:
+        raise APIValidationException("file is required")
+
+    content = await file.read()
+    if not content:
+        raise APIValidationException("Uploaded file is empty")
+
+    ext = Path(file.filename).suffix
+    saved_name = f"{uuid4().hex}{ext.lower()}"
+    base_dir = Path(settings.media_root) / "shipment_documents" / str(shipment_id)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    file_path = base_dir / saved_name
+    file_path.write_bytes(content)
+    public_url = f"/media/shipment_documents/{shipment_id}/{saved_name}"
+
+    raw_name = (document_name or file.filename).strip()
+    normalized_name = _sanitize_filename(raw_name)
+    normalized_doc_type = document_type.strip() if document_type else None
+    normalized_notes = notes.strip() if notes else None
+
+    async with atomic(db) as session:
+        document = await shipment_repository.create_document(
+            session,
+            ShipmentDocument(
+                shipment_id=shipment_id,
+                document_name=normalized_name,
+                document_type=normalized_doc_type,
+                document_url=public_url,
+                notes=normalized_notes,
+                uploaded_by_user_id=current_user.id,
+            ),
+        )
+        await bess_repository.create_audit_log(
+            session,
+            AuditLog(
+                user_id=current_user.id,
+                action="SHIPMENT_DOCUMENT_UPLOAD",
+                entity_type="ShipmentDocument",
+                entity_id=document.id,
+                payload_json={
+                    "shipment_id": shipment_id,
+                    "document_name": normalized_name,
+                    "document_type": normalized_doc_type,
+                    "document_url": public_url,
+                },
+            ),
+        )
+    return document
+
+
+async def list_shipment_documents(
+    db: AsyncSession,
+    shipment_id: int,
+    page: int,
+    size: int,
+) -> PaginatedShipmentDocuments:
+    shipment = await shipment_repository.get_shipment(db, shipment_id)
+    if shipment is None:
+        raise APINotFoundException("Shipment not found")
+    total, items = await shipment_repository.list_documents(db, shipment_id, page, size)
+    return PaginatedShipmentDocuments(
+        total=total,
+        items=[ShipmentDocumentRead.model_validate(item) for item in items],
+        page=page,
+        size=size,
+    )

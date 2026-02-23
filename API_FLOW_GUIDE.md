@@ -124,7 +124,7 @@ Example:
   "existing_qr_code_url": "https://vendor.example/qr/EESB2LFPL8001331215418260001",
   "country_id": 1,
   "city_id": 1,
-  "warehouse_id": 1,
+  "warehouse_id": null,
   "site_address": "Plant-1"
 }
 ```
@@ -136,17 +136,31 @@ Example:
 4. Download QR file (only when backend-generated PNG exists)
 - `GET /api/v1/bess/{id}/qrcode`
 
-### Step 3: Shipment flow
+### Step 3: Shipment/container flow (multi-BESS)
 
-1. Create shipment
+This is the China -> India container use case.
+
+1. Create one shipment (container) with expected quantity
 - `POST /api/v1/shipments/`
 
-2. Assign BESS to shipment
-- `POST /api/v1/shipments/{id}/units`
-- Payload must include `order_id` to bind BESS to purchase/order/container reference.
+Example:
+
+```json
+{
+  "shipment_code": "CN-IN-2026-001",
+  "origin_country_id": 1,
+  "destination_country_id": 2,
+  "expected_quantity": 20
+}
+```
+
+2. Add BESS units into this shipment
+- Single add: `POST /api/v1/shipments/{id}/units`
+- Bulk add: `POST /api/v1/shipments/{id}/units/bulk`
+- Each item must have `order_id` (for PO/container traceability)
 - BESS stage moves to `SHIPMENT_ASSIGNED`
 
-Example:
+Single add example:
 
 ```json
 {
@@ -155,14 +169,45 @@ Example:
 }
 ```
 
-2B. List shipment units with order mapping
-- `GET /api/v1/shipments/{id}/units?page=1&size=20`
+Bulk add example:
 
-3. Update shipment status
+```json
+{
+  "items": [
+    { "bess_unit_id": 12, "order_id": "PO-UNITY-0001" },
+    { "bess_unit_id": 13, "order_id": "PO-UNITY-0001" }
+  ]
+}
+```
+
+3. Upload shipment documents (Bill of Lading, Invoice, Packing List, etc.)
+- `POST /api/v1/shipments/{id}/documents/upload` (multipart/form-data)
+- `GET /api/v1/shipments/{id}/documents?page=1&size=20`
+
+Local storage path:
+- Files are saved under `MEDIA_ROOT/shipment_documents/{shipment_id}/...`
+- Public URL is stored as `/media/shipment_documents/{shipment_id}/...`
+
+4. Verify shipment mapping
+- `GET /api/v1/shipments/{id}/units?page=1&size=20`
+- Use response `total` as actual assigned quantity.
+
+4B. Fetch full shipment detail in one API call
+- `GET /api/v1/shipments/{id}`
+- Returns:
+  - shipment header (`shipment_code`, `status`, `expected_quantity`, etc.)
+  - all shipment units with `order_id`
+  - all uploaded shipment documents
+
+5. Update shipment status
 - `PATCH /api/v1/shipments/{id}/status`
-- `PACKED` -> BESS `PACKED`
-- `IN_TRANSIT` -> BESS `IN_TRANSIT`
-- `ARRIVED` -> BESS `PORT_ARRIVED`
+- Rules:
+  - To set `PACKED`, backend enforces:
+    - `assigned_units >= expected_quantity`
+    - at least 1 shipment document uploaded
+  - `PACKED` -> BESS `PACKED`
+  - `IN_TRANSIT` -> BESS `IN_TRANSIT`
+  - `ARRIVED` -> BESS `PORT_ARRIVED`
 
 ### Step 4: Checklist + stage transition at site
 
@@ -238,6 +283,19 @@ If missing certificate at required logistics stage, transition API returns HTTP 
 1. Stage distribution report
 - `GET /api/v1/reports/`
 
+## 8. Non-technical flow (what actually happens)
+
+1. Factory scans each box QR and registers unit in system.
+2. Logistics creates one shipment for one container and sets how many BESS are expected.
+3. Logistics links many BESS units to that shipment (one by one or bulk).
+4. Logistics uploads container documents.
+5. Shipment moves through statuses (`PACKED`, `IN_TRANSIT`, `ARRIVED`).
+6. At each site/installation stage, installer fills checklist items and uploads mandatory photos.
+7. Only after checklist completion can stage move to next stage.
+8. Engineering assignment happens for site stages.
+9. Commissioning records are added.
+10. Final checklist PDF/report is generated and downloaded.
+
 ## 6. Core permission mapping (quick reference)
 
 - BESS create: `bess:create`
@@ -259,9 +317,11 @@ If missing certificate at required logistics stage, transition API returns HTTP 
 5. `POST /api/v1/master/product-models`
 6. `POST /api/v1/bess/`
 7. `POST /api/v1/shipments/`
-8. `POST /api/v1/shipments/{id}/units`
-9. `PATCH /api/v1/shipments/{id}/status` (PACKED/IN_TRANSIT/ARRIVED)
-10. Checklist APIs + `PATCH /api/v1/bess/{id}/transition` for each stage
-11. Engineer assignment APIs
-12. Commissioning APIs
-13. `GET /api/v1/reports/`
+8. `POST /api/v1/shipments/{id}/units` or `/units/bulk`
+9. `POST /api/v1/shipments/{id}/documents/upload`
+10. `GET /api/v1/shipments/{id}` (full shipment detail)
+11. `PATCH /api/v1/shipments/{id}/status` (PACKED/IN_TRANSIT/ARRIVED)
+12. Checklist APIs + `PATCH /api/v1/bess/{id}/transition` for each stage
+13. Engineer assignment APIs
+14. Commissioning APIs
+15. `GET /api/v1/reports/`
