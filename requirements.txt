@@ -43,6 +43,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 python-jose==3.4.0
 python-multipart==0.0.20
+pytesseract==0.3.13
 qrcode==8.2
 redis==6.4.0
 rsa==4.9.1

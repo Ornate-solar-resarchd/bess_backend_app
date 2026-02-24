@@ -25,6 +25,7 @@ class NestedProductModel(BaseModel):
 class BESSUnitCreate(BaseModel):
     serial_number: str | None = None
     existing_qr_code_url: str | None = None
+    nameplate_photo_url: str | None = None
     regenerate_qr_png: bool = True
     product_model_id: int
     country_id: int
@@ -81,6 +82,7 @@ class BESSUnitRead(BaseModel):
     id: int
     serial_number: str
     qr_code_url: str | None
+    nameplate_photo_url: str | None
     current_stage: BESSStage
     is_active: bool
     product_model: NestedProductModel

@@ -64,6 +64,7 @@ class ProductModelCreate(BaseModel):
     model_number: str
     capacity_kwh: float
     description: str | None = None
+    spec_fields: dict[str, str] | None = None
 
 
 class ProductModelRead(BaseModel):

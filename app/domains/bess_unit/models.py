@@ -16,6 +16,7 @@ class BESSUnit(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     serial_number: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     qr_code_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    nameplate_photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     product_model_id: Mapped[int] = mapped_column(ForeignKey("product_models.id"), nullable=False)
     product_model: Mapped["ProductModel"] = relationship(lazy="selectin")

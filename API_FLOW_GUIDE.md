@@ -90,6 +90,9 @@ Authorization: Bearer <access_token>
 
 4. Create product model
 - `POST /api/v1/master/product-models`
+- Use `spec_fields` to send full nameplate details; backend stores them in `description`.
+- `iec_designation` is automatically excluded from stored description.
+- If `HESS` appears in model/details, backend converts it to `UESS`.
 
 ### Step 2: Factory registration (existing hardware QR-first)
 
@@ -99,12 +102,13 @@ Use this when box already has factory QR and serial from manufacturer.
 - `POST /api/v1/bess/qr/parse`
 - Send scanner output exactly as-is in `qr_raw_data`
 - Backend extracts `serial_number`, `model_number`, `manufactured_date`
+- QR model values containing `HESS` are normalized to `UESS`.
 
 Example:
 
 ```json
 {
-  "qr_raw_data": "Product Model: HESS-215-418-EU-IN\nMade Date: 2026.1\nFactory Code: EESB2LFPL8001331215418260001"
+  "qr_raw_data": "Product Model: UESS-215-418-EU-IN\nMade Date: 2026.1\nFactory Code: EESB2LFPL8001331215418260001"
 }
 ```
 
@@ -119,7 +123,7 @@ Example:
 
 ```json
 {
-  "qr_raw_data": "Product Model: HESS-215-418-EU-IN\nMade Date: 2026.1\nFactory Code: EESB2LFPL8001331215418260001",
+  "qr_raw_data": "Product Model: UESS-215-418-EU-IN\nMade Date: 2026.1\nFactory Code: EESB2LFPL8001331215418260001",
   "product_model_id": 1,
   "existing_qr_code_url": "https://vendor.example/qr/EESB2LFPL8001331215418260001",
   "country_id": 1,
@@ -128,6 +132,12 @@ Example:
   "site_address": "Plant-1"
 }
 ```
+
+2B. Register BESS directly from photo (no QR text needed)
+- `POST /api/v1/bess/register-from-photo` (multipart/form-data)
+- Required form fields: `photo`, `country_id`, `city_id`
+- Optional: `product_model_id`, `serial_number_override`, `manufactured_date`, `ocr_text_override`
+- Backend runs OCR, parses serial/model/date, stores photo at `/media/nameplates/...`, and saves URL in `nameplate_photo_url`
 
 3. Public QR scan endpoint
 - `GET /api/v1/bess/scan/{serial_number}`

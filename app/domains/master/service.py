@@ -7,6 +7,7 @@ from app.domains.auth.models import User
 from app.domains.bess_unit.models import AuditLog
 from app.domains.bess_unit.repository import bess_repository
 from app.domains.master.models import City, Country, ProductModel
+from app.domains.master.normalization import build_product_description, normalize_hess_to_uess
 from app.domains.master.repository import master_repository
 from app.domains.master.schemas import CityCreate, CountryCreate, ProductModelCreate, WarehouseCreate
 from app.shared.acid import atomic
@@ -92,15 +93,19 @@ async def list_product_models(db: AsyncSession, page: int, size: int):
 
 
 async def create_product_model(db: AsyncSession, payload: ProductModelCreate, current_user: User):
-    duplicate = await db.scalar(select(ProductModel).where(ProductModel.model_number == payload.model_number))
+    normalized_model_number = normalize_hess_to_uess(payload.model_number.strip().upper())
+    duplicate = await db.scalar(
+        select(ProductModel).where(ProductModel.model_number.ilike(normalized_model_number))
+    )
     if duplicate:
         raise APIConflictException("Product model already exists")
+    normalized_description = build_product_description(payload.description, payload.spec_fields)
     async with atomic(db) as session:
         obj = await master_repository.create_product_model(
             session,
-            model_number=payload.model_number,
+            model_number=normalized_model_number,
             capacity_kwh=payload.capacity_kwh,
-            description=payload.description,
+            description=normalized_description,
         )
         await bess_repository.create_audit_log(
             session,
@@ -109,7 +114,10 @@ async def create_product_model(db: AsyncSession, payload: ProductModelCreate, cu
                 action="MASTER_PRODUCT_MODEL_CREATE",
                 entity_type="ProductModel",
                 entity_id=obj.id,
-                payload_json={"model_number": obj.model_number, "capacity_kwh": obj.capacity_kwh},
+                payload_json={
+                    "model_number": obj.model_number,
+                    "capacity_kwh": obj.capacity_kwh,
+                },
             ),
         )
         return obj

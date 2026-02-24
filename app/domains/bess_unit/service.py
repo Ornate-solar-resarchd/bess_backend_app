@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import qrcode
+from fastapi import UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +35,7 @@ from app.domains.bess_unit.schemas import (
 from app.domains.engineer.tasks import auto_assign_engineer_task
 from app.domains.installation.repository import checklist_repository
 from app.domains.master.models import City, Country, ProductModel
+from app.domains.master.normalization import normalize_hess_to_uess
 from app.domains.shipment.repository import shipment_repository
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, SITE_STAGES, STAGE_TRANSITIONS
@@ -120,6 +122,47 @@ def _ensure_qr_file(serial_number: str) -> tuple[str, Path]:
     return public_url, file_path
 
 
+def _save_uploaded_nameplate_photo(photo: UploadFile, content: bytes) -> str:
+    ext = Path(photo.filename or "").suffix.lower()
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".bmp"}:
+        ext = ".jpg"
+
+    media_root = Path(settings.media_root)
+    photo_dir = media_root / "nameplates"
+    photo_dir.mkdir(parents=True, exist_ok=True)
+
+    file_name = f"{uuid.uuid4().hex}{ext}"
+    file_path = photo_dir / file_name
+    file_path.write_bytes(content)
+    return f"/media/nameplates/{file_name}"
+
+
+def _extract_text_from_nameplate_photo(photo_url: str) -> str:
+    try:
+        import pytesseract
+        from PIL import Image
+    except ImportError as exc:
+        raise APIValidationException(
+            "OCR dependency missing. Install pytesseract and Tesseract OCR binary, or send ocr_text_override."
+        ) from exc
+
+    relative = photo_url.replace("/media/", "", 1)
+    file_path = Path(settings.media_root) / relative
+    if not file_path.exists():
+        raise APIValidationException("Uploaded photo not found for OCR processing.")
+
+    try:
+        image = Image.open(file_path)
+        text = pytesseract.image_to_string(image)
+    except Exception as exc:  # pragma: no cover - defensive runtime guard
+        raise APIValidationException("Failed to extract text from uploaded photo.") from exc
+
+    cleaned = text.strip()
+    if not cleaned:
+        raise APIValidationException("OCR found no readable text. Try clearer photo or ocr_text_override.")
+    return cleaned
+
+
 def _normalize_key(key: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", key.strip().lower()).strip("_")
 
@@ -162,11 +205,11 @@ def _collect_fields(normalized_fields: dict[str, str], source: dict[str, object]
             for nested_key, nested_value in value.items():
                 nested = _normalize_key(str(nested_key))
                 if nested and nested_value is not None:
-                    normalized_fields.setdefault(nested, str(nested_value).strip())
+                    normalized_fields.setdefault(nested, normalize_hess_to_uess(str(nested_value).strip()))
             continue
         if value is None:
             continue
-        normalized_fields.setdefault(normalized_key, str(value).strip())
+        normalized_fields.setdefault(normalized_key, normalize_hess_to_uess(str(value).strip()))
 
 
 def _extract_url_fields(normalized_fields: dict[str, str], raw_data: str) -> str | None:
@@ -179,7 +222,7 @@ def _extract_url_fields(normalized_fields: dict[str, str], raw_data: str) -> str
 
     for key, values in parse_qs(parsed.query).items():
         if values:
-            normalized_fields.setdefault(_normalize_key(key), values[0].strip())
+            normalized_fields.setdefault(_normalize_key(key), normalize_hess_to_uess(values[0].strip()))
 
     path_segments = [segment for segment in parsed.path.split("/") if segment]
     if not path_segments:
@@ -203,7 +246,7 @@ def _extract_key_value_fields(normalized_fields: dict[str, str], raw_data: str) 
             continue
         normalized_key = _normalize_key(key)
         if normalized_key and value.strip():
-            normalized_fields.setdefault(normalized_key, value.strip())
+            normalized_fields.setdefault(normalized_key, normalize_hess_to_uess(value.strip()))
 
 
 def _parse_qr_payload(raw_data: str) -> ParsedQRPayload:
@@ -238,7 +281,7 @@ def _parse_qr_payload(raw_data: str) -> ParsedQRPayload:
     for key in MODEL_KEYS:
         value = normalized_fields.get(key)
         if value:
-            model_number = value
+            model_number = normalize_hess_to_uess(value)
             break
 
     manufactured_date: datetime | None = None
@@ -285,9 +328,17 @@ async def _resolve_product_model_id(
         return product_model.id
 
     if parsed_model_number:
-        stmt = select(ProductModel).where(func.lower(ProductModel.model_number) == parsed_model_number.lower())
+        normalized_model = normalize_hess_to_uess(parsed_model_number)
+        legacy_model = normalized_model.replace("UESS", "HESS", 1)
+        stmt = select(ProductModel).where(
+            (func.lower(ProductModel.model_number) == normalized_model.lower())
+            | (func.lower(ProductModel.model_number) == legacy_model.lower())
+        )
         model = await db.scalar(stmt)
         if model is not None:
+            if model.model_number != normalized_model:
+                model.model_number = normalized_model
+                await db.flush()
             return model.id
 
     raise APIValidationException(
@@ -318,6 +369,7 @@ async def register_bess_from_qr(
         BESSUnitCreate(
             serial_number=serial_number,
             existing_qr_code_url=payload.existing_qr_code_url,
+            nameplate_photo_url=None,
             regenerate_qr_png=False,
             product_model_id=product_model_id,
             country_id=payload.country_id,
@@ -328,6 +380,62 @@ async def register_bess_from_qr(
             site_longitude=payload.site_longitude,
             customer_user_id=payload.customer_user_id,
             manufactured_date=manufactured_date,
+        ),
+        current_user,
+    )
+
+
+async def register_bess_from_photo(
+    db: AsyncSession,
+    *,
+    photo: UploadFile,
+    country_id: int,
+    city_id: int,
+    current_user: User,
+    ocr_text_override: str | None = None,
+    serial_number_override: str | None = None,
+    existing_qr_code_url: str | None = None,
+    product_model_id: int | None = None,
+    site_address: str | None = None,
+    site_latitude: float | None = None,
+    site_longitude: float | None = None,
+    customer_user_id: int | None = None,
+    manufactured_date: datetime | None = None,
+) -> BESSUnit:
+    if not photo.filename:
+        raise APIValidationException("photo file is required")
+
+    content = await photo.read()
+    if not content:
+        raise APIValidationException("Uploaded photo is empty")
+
+    photo_url = _save_uploaded_nameplate_photo(photo, content)
+    parsed_text = ocr_text_override.strip() if ocr_text_override else _extract_text_from_nameplate_photo(photo_url)
+    parsed = _parse_qr_payload(parsed_text)
+
+    serial_number = serial_number_override.strip().upper() if serial_number_override else parsed.serial_number
+    if not serial_number:
+        raise APIValidationException("Serial number not found from photo OCR. Provide serial_number_override.")
+
+    resolved_product_model_id = await _resolve_product_model_id(db, product_model_id, parsed.model_number)
+    resolved_manufactured_date = manufactured_date or parsed.manufactured_date
+
+    return await create_bess_unit(
+        db,
+        BESSUnitCreate(
+            serial_number=serial_number,
+            existing_qr_code_url=existing_qr_code_url,
+            nameplate_photo_url=photo_url,
+            regenerate_qr_png=True,
+            product_model_id=resolved_product_model_id,
+            country_id=country_id,
+            city_id=city_id,
+            warehouse_id=None,
+            site_address=site_address,
+            site_latitude=site_latitude,
+            site_longitude=site_longitude,
+            customer_user_id=customer_user_id,
+            manufactured_date=resolved_manufactured_date,
         ),
         current_user,
     )
@@ -359,6 +467,7 @@ async def create_bess_unit(db: AsyncSession, payload: BESSUnitCreate, current_us
         unit = BESSUnit(
             serial_number=serial_number,
             qr_code_url=qr_code_url,
+            nameplate_photo_url=payload.nameplate_photo_url,
             product_model_id=payload.product_model_id,
             country_id=payload.country_id,
             city_id=payload.city_id,

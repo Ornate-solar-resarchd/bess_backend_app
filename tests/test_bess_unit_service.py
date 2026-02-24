@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import UploadFile
 
 from app.domains.bess_unit import service as bess_service
 from app.shared.enums import BESSStage
@@ -138,7 +140,7 @@ async def test_parse_qr_data_extracts_factory_fields() -> None:
     )
     result = await bess_service.parse_qr_data(raw)
     assert result.serial_number == "EESB2LFPL8001331215418260001"
-    assert result.model_number == "HESS-215-418-EU-IN"
+    assert result.model_number == "UESS-215-418-EU-IN"
     assert result.can_register is True
     assert result.manufactured_date is not None
     assert result.manufactured_date.year == 2026
@@ -248,3 +250,67 @@ async def test_list_bess_shipments_success(
     assert result.total == 1
     assert result.items[0].shipment_id == 2
     assert result.items[0].order_id == "PO-1001"
+
+
+@pytest.mark.asyncio
+async def test_register_from_photo_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    photo = UploadFile(filename="nameplate.jpg", file=BytesIO(b"dummy-image-bytes"))
+    created = SimpleNamespace(id=7, serial_number="SN-001", nameplate_photo_url="/media/nameplates/a.jpg")
+
+    monkeypatch.setattr(
+        bess_service,
+        "_save_uploaded_nameplate_photo",
+        Mock(return_value="/media/nameplates/a.jpg"),
+    )
+    monkeypatch.setattr(
+        bess_service,
+        "_extract_text_from_nameplate_photo",
+        Mock(return_value="Product Model: HESS-125-261-OS\nFactory Code: SN-001"),
+    )
+    monkeypatch.setattr(bess_service, "_resolve_product_model_id", AsyncMock(return_value=4))
+    monkeypatch.setattr(bess_service, "create_bess_unit", AsyncMock(return_value=created))
+
+    result = await bess_service.register_bess_from_photo(
+        db=object(),
+        photo=photo,
+        country_id=1,
+        city_id=1,
+        current_user=SimpleNamespace(id=1),
+    )
+
+    assert result.id == 7
+    assert result.nameplate_photo_url == "/media/nameplates/a.jpg"
+    bess_service.create_bess_unit.assert_awaited_once()
+    created_payload = bess_service.create_bess_unit.await_args.args[1]
+    assert created_payload.serial_number == "SN-001"
+    assert created_payload.nameplate_photo_url == "/media/nameplates/a.jpg"
+    assert created_payload.product_model_id == 4
+
+
+@pytest.mark.asyncio
+async def test_register_from_photo_requires_serial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    photo = UploadFile(filename="nameplate.jpg", file=BytesIO(b"dummy-image-bytes"))
+
+    monkeypatch.setattr(
+        bess_service,
+        "_save_uploaded_nameplate_photo",
+        Mock(return_value="/media/nameplates/a.jpg"),
+    )
+    monkeypatch.setattr(
+        bess_service,
+        "_extract_text_from_nameplate_photo",
+        Mock(return_value="Product Model: UESS-125-261-OS\nMade Date: 2025.10"),
+    )
+
+    with pytest.raises(APIValidationException):
+        await bess_service.register_bess_from_photo(
+            db=object(),
+            photo=photo,
+            country_id=1,
+            city_id=1,
+            current_user=SimpleNamespace(id=1),
+        )

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,6 +56,42 @@ async def register_unit_from_qr(
     current_user: User = Depends(require_permission("bess:create")),
 ) -> BESSUnitRead:
     obj = await service.register_bess_from_qr(db, payload, current_user)
+    return BESSUnitRead.model_validate(obj)
+
+
+@router.post("/register-from-photo", response_model=BESSUnitRead, status_code=status.HTTP_201_CREATED)
+async def register_unit_from_photo(
+    photo: UploadFile = File(...),
+    country_id: int = Form(...),
+    city_id: int = Form(...),
+    ocr_text_override: str | None = Form(default=None),
+    serial_number_override: str | None = Form(default=None),
+    existing_qr_code_url: str | None = Form(default=None),
+    product_model_id: int | None = Form(default=None),
+    site_address: str | None = Form(default=None),
+    site_latitude: float | None = Form(default=None),
+    site_longitude: float | None = Form(default=None),
+    customer_user_id: int | None = Form(default=None),
+    manufactured_date: datetime | None = Form(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("bess:create")),
+) -> BESSUnitRead:
+    obj = await service.register_bess_from_photo(
+        db,
+        photo=photo,
+        country_id=country_id,
+        city_id=city_id,
+        current_user=current_user,
+        ocr_text_override=ocr_text_override,
+        serial_number_override=serial_number_override,
+        existing_qr_code_url=existing_qr_code_url,
+        product_model_id=product_model_id,
+        site_address=site_address,
+        site_latitude=site_latitude,
+        site_longitude=site_longitude,
+        customer_user_id=customer_user_id,
+        manufactured_date=manufactured_date,
+    )
     return BESSUnitRead.model_validate(obj)
 
 
