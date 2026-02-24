@@ -22,6 +22,7 @@ from app.domains.master.router import router as master_router
 from app.domains.rbac.router import router as rbac_router
 from app.domains.reports.router import router as reports_router
 from app.domains.shipment.router import router as shipment_router
+from app.domains.uploads.router import router as uploads_router
 
 try:
     from app.admin import setup_admin
@@ -91,6 +92,7 @@ app.include_router(shipment_router, prefix=settings.api_v1_prefix)
 app.include_router(commissioning_router, prefix=settings.api_v1_prefix)
 app.include_router(engineer_router, prefix=settings.api_v1_prefix)
 app.include_router(reports_router, prefix=settings.api_v1_prefix)
+app.include_router(uploads_router, prefix=settings.api_v1_prefix)
 
 if setup_admin is not None and SessionMiddleware is not None:
     setup_admin(app, secret_key=settings.secret_key)

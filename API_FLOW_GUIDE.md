@@ -249,6 +249,20 @@ Local storage path:
 - Photo upload is mandatory for every checked checklist item.
 - If `photo_url` is missing when `is_checked=true`, backend returns HTTP `400`.
 
+2A. Upload checklist photo locally (for `photo_url`)
+- `POST /api/v1/uploads/checklist-photo` (multipart/form-data)
+- Form field: `file` (image only)
+- Response includes `file_url` (example: `/media/checklist_photos/abc123.jpg`)
+- Use this `file_url` value in checklist update API payload as `photo_url`.
+
+2B. Upload any file locally (PDF/doc/image) and get URL
+- `POST /api/v1/uploads/document` (multipart/form-data)
+- Form fields:
+  - `file` (required)
+  - `folder` (optional, example: `certificates/port`)
+- Response includes `file_url` (example: `/media/certificates/port/port_clearance_xxx.pdf`)
+- Use this URL in APIs that accept URL fields (for example `certificate_url` in stage certificates).
+
 3. Validate checklist completeness
 - `POST /api/v1/bess/{id}/checklist/{stage}/validate`
 

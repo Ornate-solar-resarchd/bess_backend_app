@@ -1,7 +1,7 @@
 {
   "info": {
-    "_postman_id": "7f8a4b12-5f5c-4c98-9d3c-6f12ec0b1234",
-    "name": "Unity BESS Lifecycle API",
+    "_postman_id": "87cb1396-2b41-48b2-9267-d57b872af718",
+    "name": "Unity BESS Lifecycle API (FULL)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -474,7 +474,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"model_number\": \"UESS-125-261-OS\",\n  \"capacity_kwh\": 261.0,\n  \"description\": \"Factory nameplate import\",\n  \"spec_fields\": {\n    \"product_name\": \"261kWh Energy Storage System\",\n    \"product_model\": \"HESS-125-261-OS\",\n    \"system_rated_power\": \"125kW\",\n    \"system_rated_energy\": \"261kWh\",\n    \"equipment_dim\": \"1100X1320X2560 ±5mm\",\n    \"equipment_w_g\": \"2600±100kg\",\n    \"rated_dc_voltage\": \"832V\",\n    \"rated_ac_voltage\": \"3X220/380V\",\n    \"rated_capacity\": \"314Ah\",\n    \"standard\": \"IEC62619 / EN62477\",\n    \"made_date\": \"2025.10\",\n    \"factory_code\": \"EESB2LFPL380832125261250109\",\n    \"iec_designation\": \"IfpP73/176/208\"\n  }\n}",
+              "raw": "{\n  \"model_number\": \"UESS-125-261-OS\",\n  \"capacity_kwh\": 261.0,\n  \"description\": \"Factory nameplate import\",\n  \"spec_fields\": {\n    \"product_name\": \"261kWh Energy Storage System\",\n    \"product_model\": \"HESS-125-261-OS\",\n    \"system_rated_power\": \"125kW\",\n    \"system_rated_energy\": \"261kWh\",\n    \"equipment_dim\": \"1100X1320X2560 \u00b15mm\",\n    \"equipment_w_g\": \"2600\u00b1100kg\",\n    \"rated_dc_voltage\": \"832V\",\n    \"rated_ac_voltage\": \"3X220/380V\",\n    \"rated_capacity\": \"314Ah\",\n    \"standard\": \"IEC62619 / EN62477\",\n    \"made_date\": \"2025.10\",\n    \"factory_code\": \"EESB2LFPL380832125261250109\",\n    \"iec_designation\": \"IfpP73/176/208\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
