@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bess_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bess_lifecycle_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bess_lifecycle_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: bess_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bess_api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bess_lifecycle_db
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./media:/app/media
+      - ./storage:/app/storage
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bess_worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bess_lifecycle_db
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./media:/app/media
+      - ./storage:/app/storage
+    command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--loglevel=info"]
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["tools"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bess_lifecycle_db
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.shared.base_model import Base, SoftDeleteMixin, TimestampMixin
 from app.shared.enums import BESSStage
+from app.domains.master.models import ProductModel,Country,City,Warehouse
 
 
 class BESSUnit(Base, TimestampMixin, SoftDeleteMixin):

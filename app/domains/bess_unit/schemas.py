@@ -82,7 +82,7 @@ class BESSUnitRead(BaseModel):
     id: int
     serial_number: str
     qr_code_url: str | None
-    nameplate_photo_url: str | None
+    nameplate_photo_url: str | None = None
     current_stage: BESSStage
     is_active: bool
     product_model: NestedProductModel

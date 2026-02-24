@@ -77,6 +77,12 @@ Authorization: Bearer <access_token>
 
 ## 5. Full lifecycle flow (step-by-step)
 
+## Admin Panel (DB management)
+
+- URL: `/admin`
+- Login with an active user who has `SUPER_ADMIN` role.
+- Use this panel for CRUD management across users, roles, master data, BESS, shipments, checklists, engineers, assignments, and commissioning records.
+
 ### Step 1: Master data creation
 
 1. Create country
