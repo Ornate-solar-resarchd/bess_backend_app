@@ -314,3 +314,74 @@ async def test_register_from_photo_requires_serial(
             city_id=1,
             current_user=SimpleNamespace(id=1),
         )
+
+
+@pytest.mark.asyncio
+async def test_resolve_product_model_id_autocreates_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created: dict[str, object] = {}
+
+    class _FakeDB:
+        def __init__(self) -> None:
+            self._get_called = False
+
+        async def get(self, _model: object, _model_id: int):
+            self._get_called = True
+            return None
+
+        async def scalar(self, _stmt: object):
+            return None
+
+        def add(self, obj: object) -> None:
+            setattr(obj, "id", 77)
+            created["obj"] = obj
+
+        async def flush(self) -> None:
+            return None
+
+    db = _FakeDB()
+    parsed_fields = {
+        "product_name": "261kWh Energy Storage System",
+        "product_model": "HESS-125-261-OS",
+        "system_rated_energy": "261kWh",
+        "factory_code": "ABC123",
+        "iec_designation": "ignore-me",
+    }
+
+    result = await bess_service._resolve_product_model_id(
+        db=db,  # type: ignore[arg-type]
+        provided_product_model_id=None,
+        parsed_model_number="HESS-125-261-OS",
+        parsed_fields=parsed_fields,
+    )
+
+    assert result == 77
+    model_obj = created["obj"]
+    assert getattr(model_obj, "model_number") == "UESS-125-261-OS"
+    assert getattr(model_obj, "capacity_kwh") == 261.0
+    assert "Iec Designation" not in str(getattr(model_obj, "description"))
+
+
+@pytest.mark.asyncio
+async def test_resolve_product_model_id_autocreate_requires_capacity() -> None:
+    class _FakeDB:
+        async def get(self, _model: object, _model_id: int):
+            return None
+
+        async def scalar(self, _stmt: object):
+            return None
+
+        def add(self, _obj: object) -> None:
+            return None
+
+        async def flush(self) -> None:
+            return None
+
+    with pytest.raises(APIValidationException):
+        await bess_service._resolve_product_model_id(
+            db=_FakeDB(),  # type: ignore[arg-type]
+            provided_product_model_id=None,
+            parsed_model_number="UESS-125-261-OS",
+            parsed_fields={"factory_code": "ABC123"},
+        )

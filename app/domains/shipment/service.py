@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -58,6 +59,8 @@ async def create_shipment(db: AsyncSession, payload: ShipmentCreate, current_use
                 shipment_code=payload.shipment_code,
                 origin_country_id=payload.origin_country_id,
                 destination_country_id=payload.destination_country_id,
+                created_date=payload.created_date or datetime.now(UTC).date(),
+                expected_arrival_date=payload.expected_arrival_date,
                 expected_quantity=payload.expected_quantity,
                 status=ShipmentStatus.CREATED,
             ),

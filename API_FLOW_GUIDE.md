@@ -117,7 +117,8 @@ Example:
 - Uses detected serial from QR (no new serial generated)
 - Does not regenerate QR PNG
 - `warehouse_id` must be `null` at factory registration
-- If product model not resolvable from QR, pass `product_model_id`
+- If product model is not found, backend auto-creates it from parsed model + capacity fields.
+- You can still pass `product_model_id` to force mapping.
 
 Example:
 
@@ -138,6 +139,7 @@ Example:
 - Required form fields: `photo`, `country_id`, `city_id`
 - Optional: `product_model_id`, `serial_number_override`, `manufactured_date`, `ocr_text_override`
 - Backend runs OCR, parses serial/model/date, stores photo at `/media/nameplates/...`, and saves URL in `nameplate_photo_url`
+- If parsed model is not found, backend auto-creates product model from parsed details.
 
 3. Public QR scan endpoint
 - `GET /api/v1/bess/scan/{serial_number}`
@@ -160,6 +162,8 @@ Example:
   "shipment_code": "CN-IN-2026-001",
   "origin_country_id": 1,
   "destination_country_id": 2,
+  "created_date": "2026-02-24",
+  "expected_arrival_date": "2026-03-02",
   "expected_quantity": 20
 }
 ```

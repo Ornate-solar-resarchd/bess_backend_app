@@ -35,7 +35,7 @@ from app.domains.bess_unit.schemas import (
 from app.domains.engineer.tasks import auto_assign_engineer_task
 from app.domains.installation.repository import checklist_repository
 from app.domains.master.models import City, Country, ProductModel
-from app.domains.master.normalization import normalize_hess_to_uess
+from app.domains.master.normalization import build_product_description, normalize_hess_to_uess
 from app.domains.shipment.repository import shipment_repository
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, SITE_STAGES, STAGE_TRANSITIONS
@@ -320,7 +320,36 @@ async def _resolve_product_model_id(
     db: AsyncSession,
     provided_product_model_id: int | None,
     parsed_model_number: str | None,
+    parsed_fields: dict[str, str] | None = None,
 ) -> int:
+    def _extract_capacity_kwh(fields: dict[str, str] | None) -> float | None:
+        if not fields:
+            return None
+
+        prioritized_keys = (
+            "capacity_kwh",
+            "system_rated_energy",
+            "rated_energy",
+            "product_name",
+        )
+        values: list[str] = []
+        for key in prioritized_keys:
+            value = fields.get(key)
+            if value:
+                values.append(value)
+        values.extend(v for v in fields.values() if v)
+
+        for raw in values:
+            text = str(raw)
+            match = re.search(r"(\d+(?:\.\d+)?)\s*kwh", text, flags=re.IGNORECASE)
+            if match:
+                return float(match.group(1))
+            if "capacity_kwh" in text.lower() or "rated_energy" in text.lower():
+                number = re.search(r"(\d+(?:\.\d+)?)", text)
+                if number:
+                    return float(number.group(1))
+        return None
+
     if provided_product_model_id is not None:
         product_model = await db.get(ProductModel, provided_product_model_id)
         if not product_model:
@@ -341,8 +370,25 @@ async def _resolve_product_model_id(
                 await db.flush()
             return model.id
 
+        capacity_kwh = _extract_capacity_kwh(parsed_fields)
+        if capacity_kwh is None:
+            raise APIValidationException(
+                "Unable to auto-create product model because capacity_kwh was not found in QR/photo data. "
+                "Provide product_model_id."
+            )
+
+        description = build_product_description(None, parsed_fields)
+        created_model = ProductModel(
+            model_number=normalized_model,
+            capacity_kwh=capacity_kwh,
+            description=description,
+        )
+        db.add(created_model)
+        await db.flush()
+        return created_model.id
+
     raise APIValidationException(
-        "Unable to resolve product model from QR data. Provide product_model_id in request."
+        "Unable to resolve product model from QR/photo data. Provide product_model_id in request."
     )
 
 
@@ -356,7 +402,12 @@ async def register_bess_from_qr(
     if not serial_number:
         raise APIValidationException("Serial number not found in QR payload. Provide serial_number_override.")
 
-    product_model_id = await _resolve_product_model_id(db, payload.product_model_id, parsed.model_number)
+    product_model_id = await _resolve_product_model_id(
+        db,
+        payload.product_model_id,
+        parsed.model_number,
+        parsed.normalized_fields,
+    )
     manufactured_date = payload.manufactured_date or parsed.manufactured_date
 
     if payload.warehouse_id is not None:
@@ -417,7 +468,12 @@ async def register_bess_from_photo(
     if not serial_number:
         raise APIValidationException("Serial number not found from photo OCR. Provide serial_number_override.")
 
-    resolved_product_model_id = await _resolve_product_model_id(db, product_model_id, parsed.model_number)
+    resolved_product_model_id = await _resolve_product_model_id(
+        db,
+        product_model_id,
+        parsed.model_number,
+        parsed.normalized_fields,
+    )
     resolved_manufactured_date = manufactured_date or parsed.manufactured_date
 
     return await create_bess_unit(

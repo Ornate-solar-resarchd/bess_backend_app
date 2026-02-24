@@ -88,6 +88,14 @@
       "value": "https://vendor.example/qr/EESB2LFPL8001331215418260001"
     },
     {
+      "key": "nameplate_photo_file",
+      "value": "./media/demo/nameplate.jpg"
+    },
+    {
+      "key": "ocr_text_override",
+      "value": ""
+    },
+    {
       "key": "order_id",
       "value": "PO-UNITY-0001"
     },
@@ -110,6 +118,14 @@
     {
       "key": "expected_quantity",
       "value": "2"
+    },
+    {
+      "key": "shipment_created_date",
+      "value": "2026-02-24"
+    },
+    {
+      "key": "shipment_expected_arrival_date",
+      "value": "2026-03-02"
     },
     {
       "key": "shipment_doc_file",
@@ -538,6 +554,84 @@
           "response": []
         },
         {
+          "name": "Register BESS From Nameplate Photo",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "{{nameplate_photo_file}}"
+                },
+                {
+                  "key": "country_id",
+                  "value": "{{country_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "city_id",
+                  "value": "{{city_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "product_model_id",
+                  "value": "{{product_model_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "serial_number_override",
+                  "value": "{{serial_number_override}}",
+                  "type": "text"
+                },
+                {
+                  "key": "existing_qr_code_url",
+                  "value": "{{existing_qr_code_url}}",
+                  "type": "text"
+                },
+                {
+                  "key": "ocr_text_override",
+                  "value": "{{ocr_text_override}}",
+                  "type": "text"
+                },
+                {
+                  "key": "site_address",
+                  "value": "Demo Site A",
+                  "type": "text"
+                },
+                {
+                  "key": "site_latitude",
+                  "value": "28.61",
+                  "type": "text"
+                },
+                {
+                  "key": "site_longitude",
+                  "value": "77.20",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/bess/register-from-photo"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set(\"bess_unit_id\", data.id);",
+                  "  pm.collectionVariables.set(\"serial_number\", data.serial_number);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "Create BESS Unit (Manual Fallback)",
           "request": {
             "method": "POST",
@@ -872,7 +966,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"shipment_code\": \"SHP-FRONTEND-DEMO-001\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}},\n  \"expected_quantity\": {{expected_quantity}}\n}",
+              "raw": "{\n  \"shipment_code\": \"SHP-FRONTEND-DEMO-001\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}},\n  \"created_date\": \"{{shipment_created_date}}\",\n  \"expected_arrival_date\": \"{{shipment_expected_arrival_date}}\",\n  \"expected_quantity\": {{expected_quantity}}\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1498,7 +1592,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"shipment_code\": \"{{shipment_code_new}}\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}},\n  \"expected_quantity\": 1\n}",
+              "raw": "{\n  \"shipment_code\": \"{{shipment_code_new}}\",\n  \"origin_country_id\": {{country_id}},\n  \"destination_country_id\": {{country_id}},\n  \"created_date\": \"{{shipment_created_date}}\",\n  \"expected_arrival_date\": \"{{shipment_expected_arrival_date}}\",\n  \"expected_quantity\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"

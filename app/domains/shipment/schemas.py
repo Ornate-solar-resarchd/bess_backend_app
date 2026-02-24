@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field
@@ -12,6 +12,8 @@ class ShipmentCreate(BaseModel):
     shipment_code: str
     origin_country_id: int
     destination_country_id: int
+    created_date: date | None = None
+    expected_arrival_date: date | None = None
     expected_quantity: int = Field(default=1, ge=1)
 
 
@@ -22,6 +24,8 @@ class ShipmentRead(BaseModel):
     shipment_code: str
     origin_country_id: int
     destination_country_id: int
+    created_date: date | None = None
+    expected_arrival_date: date | None = None
     expected_quantity: int
     status: ShipmentStatus
 

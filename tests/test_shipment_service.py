@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -201,3 +202,43 @@ async def test_bulk_assign_rejects_existing_other_shipment(
             payload=payload,
             current_user=SimpleNamespace(id=99),
         )
+
+
+@pytest.mark.asyncio
+async def test_create_shipment_sets_dates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = SimpleNamespace(
+        shipment_code="SHP-NEW-1",
+        origin_country_id=1,
+        destination_country_id=2,
+        expected_quantity=3,
+        created_date=date(2026, 2, 24),
+        expected_arrival_date=date(2026, 3, 5),
+    )
+    db = SimpleNamespace(
+        scalar=AsyncMock(return_value=None),
+        get=AsyncMock(side_effect=[SimpleNamespace(id=1), SimpleNamespace(id=2)]),
+    )
+    created_shipment = SimpleNamespace(
+        id=100,
+        shipment_code=payload.shipment_code,
+        origin_country_id=payload.origin_country_id,
+        destination_country_id=payload.destination_country_id,
+        expected_quantity=payload.expected_quantity,
+        created_date=payload.created_date,
+        expected_arrival_date=payload.expected_arrival_date,
+        status=ShipmentStatus.CREATED,
+    )
+
+    monkeypatch.setattr(shipment_service, "atomic", fake_atomic)
+    monkeypatch.setattr(shipment_service.shipment_repository, "create_shipment", AsyncMock(return_value=created_shipment))
+    monkeypatch.setattr(shipment_service.bess_repository, "create_audit_log", AsyncMock(return_value=None))
+
+    result = await shipment_service.create_shipment(
+        db=db,
+        payload=payload,
+        current_user=SimpleNamespace(id=1),
+    )
+    assert result.created_date == date(2026, 2, 24)
+    assert result.expected_arrival_date == date(2026, 3, 5)
