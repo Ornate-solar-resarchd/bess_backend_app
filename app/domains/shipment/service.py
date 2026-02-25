@@ -26,6 +26,7 @@ from app.domains.shipment.schemas import (
     ShipmentItemRead,
     ShipmentRead,
 )
+from app.services.s3 import is_s3_media_enabled, upload_bytes_to_s3
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, ShipmentStatus
 from app.shared.exceptions import APIConflictException, APINotFoundException, APIValidationException
@@ -305,13 +306,21 @@ async def upload_shipment_document(
     if not content:
         raise APIValidationException("Uploaded file is empty")
 
-    ext = Path(file.filename).suffix
-    saved_name = f"{uuid4().hex}{ext.lower()}"
-    base_dir = Path(settings.media_root) / "shipment_documents" / str(shipment_id)
-    base_dir.mkdir(parents=True, exist_ok=True)
-    file_path = base_dir / saved_name
-    file_path.write_bytes(content)
-    public_url = f"/media/shipment_documents/{shipment_id}/{saved_name}"
+    if is_s3_media_enabled():
+        public_url = upload_bytes_to_s3(
+            content=content,
+            original_filename=file.filename,
+            folder=f"shipment_documents/{shipment_id}",
+            content_type=file.content_type,
+        )
+    else:
+        ext = Path(file.filename).suffix
+        saved_name = f"{uuid4().hex}{ext.lower()}"
+        base_dir = Path(settings.media_root) / "shipment_documents" / str(shipment_id)
+        base_dir.mkdir(parents=True, exist_ok=True)
+        file_path = base_dir / saved_name
+        file_path.write_bytes(content)
+        public_url = f"/media/shipment_documents/{shipment_id}/{saved_name}"
 
     raw_name = (document_name or file.filename).strip()
     normalized_name = _sanitize_filename(raw_name)

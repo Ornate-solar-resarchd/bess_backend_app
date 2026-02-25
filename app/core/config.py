@@ -31,6 +31,12 @@ class Settings(BaseSettings):
 
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     media_root: str = Field(default="./media", validation_alias=AliasChoices("MEDIA_ROOT", "QRCODE_STORAGE_DIR"))
+    media_storage_backend: str = Field(default="local", alias="MEDIA_STORAGE_BACKEND")
+    aws_access_key_id: str | None = Field(default=None, alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str | None = Field(default=None, alias="AWS_SECRET_ACCESS_KEY")
+    aws_region: str = Field(default="ap-south-1", alias="AWS_REGION")
+    aws_s3_bucket: str | None = Field(default=None, alias="AWS_S3_BUCKET")
+    aws_s3_base_url: str | None = Field(default=None, alias="AWS_S3_BASE_URL")
     qr_code_base_url: str = Field(
         default="https://yourdomain.com", validation_alias=AliasChoices("QR_CODE_BASE_URL", "QR_BASE_URL")
     )
@@ -61,5 +67,21 @@ class Settings(BaseSettings):
         if isinstance(value, list):
             return value
         return [item.strip() for item in value.split(",") if item.strip()]
+
+    @field_validator("media_storage_backend", mode="before")
+    @classmethod
+    def normalize_storage_backend(cls, value: str | None) -> str:
+        normalized = (value or "local").strip().lower()
+        if normalized not in {"local", "s3"}:
+            return "local"
+        return normalized
+
+    @field_validator("aws_access_key_id", "aws_secret_access_key", "aws_s3_bucket", "aws_s3_base_url", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
 settings = Settings()

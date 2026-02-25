@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from unittest.mock import Mock
 
 import pytest
 from starlette.datastructures import UploadFile
@@ -87,3 +88,52 @@ async def test_upload_document_rejects_empty_file(
 
     with pytest.raises(APIValidationException):
         await uploads_service.upload_document(file, folder="misc")
+
+
+@pytest.mark.asyncio
+async def test_upload_checklist_photo_uses_s3_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "media_storage_backend", "s3")
+    monkeypatch.setattr(settings, "aws_s3_bucket", "bess-bucket")
+    monkeypatch.setattr(
+        uploads_service,
+        "upload_bytes_to_s3",
+        Mock(return_value="https://cdn.example.com/checklist_photos/abc123.jpg"),
+    )
+
+    file = UploadFile(
+        filename="site_photo.jpg",
+        file=BytesIO(b"fake-image-bytes"),
+        headers={"content-type": "image/jpeg"},
+    )
+
+    result = await uploads_service.upload_checklist_photo(file)
+
+    assert result.file_url == "https://cdn.example.com/checklist_photos/abc123.jpg"
+    assert result.file_name == "abc123.jpg"
+
+
+@pytest.mark.asyncio
+async def test_upload_document_uses_s3_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "media_storage_backend", "s3")
+    monkeypatch.setattr(settings, "aws_s3_bucket", "bess-bucket")
+    monkeypatch.setattr(
+        uploads_service,
+        "upload_bytes_to_s3",
+        Mock(return_value="https://cdn.example.com/certificates/port/doc001.pdf"),
+    )
+
+    file = UploadFile(
+        filename="port_clearance.pdf",
+        file=BytesIO(b"%PDF-1.4 fake"),
+        headers={"content-type": "application/pdf"},
+    )
+
+    result = await uploads_service.upload_document(file, folder="certificates/port")
+
+    assert result.file_url == "https://cdn.example.com/certificates/port/doc001.pdf"
+    assert result.file_name == "doc001.pdf"
+    assert result.folder == "certificates/port"

@@ -3,12 +3,14 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastapi import UploadFile
 
 from app.core.config import settings
 from app.domains.uploads.schemas import ChecklistPhotoUploadRead, DocumentUploadRead
+from app.services.s3 import is_s3_media_enabled, upload_bytes_to_s3
 from app.shared.exceptions import APIValidationException
 
 _MAX_CHECKLIST_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -27,6 +29,10 @@ def _sanitize_folder(raw_folder: str | None) -> str:
     if not cleaned:
         return "documents"
     return cleaned
+
+
+def _filename_from_url(file_url: str) -> str:
+    return Path(urlparse(file_url).path).name
 
 
 async def upload_checklist_photo(file: UploadFile) -> ChecklistPhotoUploadRead:
@@ -48,13 +54,20 @@ async def upload_checklist_photo(file: UploadFile) -> ChecklistPhotoUploadRead:
     saved_name = f"{safe_basename}_{uuid4().hex}{extension}"
 
     relative_dir = Path("checklist_photos")
-    output_dir = Path(settings.media_root) / relative_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_file = output_dir / saved_name
-    output_file.write_bytes(content)
-
-    file_url = f"/media/{relative_dir.as_posix()}/{saved_name}"
+    if is_s3_media_enabled():
+        file_url = upload_bytes_to_s3(
+            content=content,
+            original_filename=file.filename,
+            folder=relative_dir.as_posix(),
+            content_type=file.content_type,
+        )
+        saved_name = _filename_from_url(file_url)
+    else:
+        output_dir = Path(settings.media_root) / relative_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file = output_dir / saved_name
+        output_file.write_bytes(content)
+        file_url = f"/media/{relative_dir.as_posix()}/{saved_name}"
 
     return ChecklistPhotoUploadRead(
         file_name=saved_name,
@@ -81,13 +94,20 @@ async def upload_document(file: UploadFile, folder: str | None = None) -> Docume
 
     safe_folder = _sanitize_folder(folder)
     relative_dir = Path(safe_folder)
-    output_dir = Path(settings.media_root) / relative_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_file = output_dir / saved_name
-    output_file.write_bytes(content)
-
-    file_url = f"/media/{relative_dir.as_posix()}/{saved_name}"
+    if is_s3_media_enabled():
+        file_url = upload_bytes_to_s3(
+            content=content,
+            original_filename=file.filename,
+            folder=relative_dir.as_posix(),
+            content_type=file.content_type,
+        )
+        saved_name = _filename_from_url(file_url)
+    else:
+        output_dir = Path(settings.media_root) / relative_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file = output_dir / saved_name
+        output_file.write_bytes(content)
+        file_url = f"/media/{relative_dir.as_posix()}/{saved_name}"
 
     return DocumentUploadRead(
         file_name=saved_name,

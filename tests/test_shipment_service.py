@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date
+from io import BytesIO
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi import UploadFile
 
 from app.domains.shipment import service as shipment_service
 from app.shared.enums import ShipmentStatus
@@ -242,3 +244,54 @@ async def test_create_shipment_sets_dates(
     )
     assert result.created_date == date(2026, 2, 24)
     assert result.expected_arrival_date == date(2026, 3, 5)
+
+
+@pytest.mark.asyncio
+async def test_upload_shipment_document_uses_s3_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(id=1)
+    stored_document = SimpleNamespace(
+        id=20,
+        shipment_id=1,
+        document_name="bol",
+        document_type="BOL",
+        document_url="https://cdn.example.com/shipment_documents/1/doc001.pdf",
+        notes=None,
+        uploaded_by_user_id=99,
+    )
+
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+    monkeypatch.setattr(shipment_service, "atomic", fake_atomic)
+    monkeypatch.setattr(shipment_service, "is_s3_media_enabled", Mock(return_value=True))
+    monkeypatch.setattr(
+        shipment_service,
+        "upload_bytes_to_s3",
+        Mock(return_value="https://cdn.example.com/shipment_documents/1/doc001.pdf"),
+    )
+    monkeypatch.setattr(
+        shipment_service.shipment_repository,
+        "create_document",
+        AsyncMock(return_value=stored_document),
+    )
+    monkeypatch.setattr(shipment_service.bess_repository, "create_audit_log", AsyncMock(return_value=None))
+
+    file = UploadFile(
+        filename="bill-of-lading.pdf",
+        file=BytesIO(b"%PDF-1.4 fake"),
+        headers={"content-type": "application/pdf"},
+    )
+
+    result = await shipment_service.upload_shipment_document(
+        db=object(),
+        shipment_id=1,
+        file=file,
+        document_type="BOL",
+        notes=None,
+        current_user=SimpleNamespace(id=99),
+        document_name="BOL",
+    )
+
+    assert result.document_url == "https://cdn.example.com/shipment_documents/1/doc001.pdf"
+    created_payload = shipment_service.shipment_repository.create_document.await_args.args[1]
+    assert created_payload.document_url == "https://cdn.example.com/shipment_documents/1/doc001.pdf"

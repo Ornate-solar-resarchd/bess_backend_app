@@ -5,6 +5,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -37,6 +38,7 @@ from app.domains.installation.repository import checklist_repository
 from app.domains.master.models import City, Country, ProductModel
 from app.domains.master.normalization import build_product_description, normalize_hess_to_uess
 from app.domains.shipment.repository import shipment_repository
+from app.services.s3 import is_s3_media_enabled, upload_bytes_to_s3
 from app.shared.acid import atomic
 from app.shared.enums import BESSStage, SITE_STAGES, STAGE_TRANSITIONS
 from app.shared.exceptions import (
@@ -127,6 +129,14 @@ def _save_uploaded_nameplate_photo(photo: UploadFile, content: bytes) -> str:
     if ext not in {".jpg", ".jpeg", ".png", ".webp", ".bmp"}:
         ext = ".jpg"
 
+    if is_s3_media_enabled():
+        return upload_bytes_to_s3(
+            content=content,
+            original_filename=f"nameplate{ext}",
+            folder="nameplates",
+            content_type=photo.content_type,
+        )
+
     media_root = Path(settings.media_root)
     photo_dir = media_root / "nameplates"
     photo_dir.mkdir(parents=True, exist_ok=True)
@@ -137,7 +147,7 @@ def _save_uploaded_nameplate_photo(photo: UploadFile, content: bytes) -> str:
     return f"/media/nameplates/{file_name}"
 
 
-def _extract_text_from_nameplate_photo(photo_url: str) -> str:
+def _extract_text_from_nameplate_photo(photo_url: str, content: bytes | None = None) -> str:
     try:
         import pytesseract
         from PIL import Image
@@ -146,13 +156,15 @@ def _extract_text_from_nameplate_photo(photo_url: str) -> str:
             "OCR dependency missing. Install pytesseract and Tesseract OCR binary, or send ocr_text_override."
         ) from exc
 
-    relative = photo_url.replace("/media/", "", 1)
-    file_path = Path(settings.media_root) / relative
-    if not file_path.exists():
-        raise APIValidationException("Uploaded photo not found for OCR processing.")
-
     try:
-        image = Image.open(file_path)
+        if content is not None:
+            image = Image.open(BytesIO(content))
+        else:
+            relative = photo_url.replace("/media/", "", 1)
+            file_path = Path(settings.media_root) / relative
+            if not file_path.exists():
+                raise APIValidationException("Uploaded photo not found for OCR processing.")
+            image = Image.open(file_path)
         text = pytesseract.image_to_string(image)
     except Exception as exc:  # pragma: no cover - defensive runtime guard
         raise APIValidationException("Failed to extract text from uploaded photo.") from exc
@@ -461,7 +473,11 @@ async def register_bess_from_photo(
         raise APIValidationException("Uploaded photo is empty")
 
     photo_url = _save_uploaded_nameplate_photo(photo, content)
-    parsed_text = ocr_text_override.strip() if ocr_text_override else _extract_text_from_nameplate_photo(photo_url)
+    parsed_text = (
+        ocr_text_override.strip()
+        if ocr_text_override
+        else _extract_text_from_nameplate_photo(photo_url, content)
+    )
     parsed = _parse_qr_payload(parsed_text)
 
     serial_number = serial_number_override.strip().upper() if serial_number_override else parsed.serial_number
