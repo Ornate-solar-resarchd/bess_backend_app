@@ -1,4 +1,11 @@
 {
+  "_meta": {
+    "template_name": "Unity Manual Checklist",
+    "template_version": "2026-02-24",
+    "checklist_logo_dark": "docs/assets/unityess-logo-dark.png",
+    "checklist_logo_light": "docs/assets/unityess-logo-light.png",
+    "brand_logo": "docs/assets/ornate-solar-logo.png"
+  },
   "SITE_ARRIVED": [
     {
       "item_text": "Inspect unit for physical damage",

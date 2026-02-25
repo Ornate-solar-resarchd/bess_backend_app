@@ -11,6 +11,11 @@ from app.shared.exceptions import APIValidationException
 DEFAULT_TEMPLATE_PATH = Path("app/domains/installation/templates/unity_manual_checklists.json")
 
 
+def _is_metadata_key(key: str) -> bool:
+    # Allow template-level metadata blocks such as "_meta" without treating them as stages.
+    return key.startswith("_")
+
+
 def load_checklist_templates(path: Path | None = None) -> dict[BESSStage, list[dict[str, Any]]]:
     template_path = path or DEFAULT_TEMPLATE_PATH
     if not template_path.exists():
@@ -22,6 +27,9 @@ def load_checklist_templates(path: Path | None = None) -> dict[BESSStage, list[d
 
     checklist_map: dict[BESSStage, list[dict[str, Any]]] = {}
     for stage_name, items in raw.items():
+        if _is_metadata_key(stage_name):
+            continue
+
         try:
             stage = BESSStage(stage_name)
         except ValueError as exc:
@@ -52,5 +60,8 @@ def load_checklist_templates(path: Path | None = None) -> dict[BESSStage, list[d
             )
 
         checklist_map[stage] = normalized_items
+
+    if not checklist_map:
+        raise APIValidationException("Checklist template file must contain at least one valid checklist stage")
 
     return checklist_map
