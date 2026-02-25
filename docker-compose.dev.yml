@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bess_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bess_lifecycle_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bess_lifecycle_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    env_file:
+      - .env.dev
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bess_lifecycle_db
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+      AUTO_CREATE_TABLES: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  worker:
+    env_file:
+      - .env.dev
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bess_lifecycle_db
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /app/media
+      AUTO_CREATE_TABLES: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  migrate:
+    env_file:
+      - .env.dev
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/bess_lifecycle_db
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
