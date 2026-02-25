@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:16-alpine
     container_name: bess_db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -19,6 +20,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: bess_redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -34,6 +36,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: bess_api
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -51,13 +54,13 @@ services:
     volumes:
       - ./media:/app/media
       - ./storage:/app/storage
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   worker:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: bess_worker
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -74,6 +77,18 @@ services:
       - ./media:/app/media
       - ./storage:/app/storage
     command: ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--loglevel=info"]
+
+  nginx:
+    image: nginx:alpine
+    container_name: bess_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - api
 
   migrate:
     build:
