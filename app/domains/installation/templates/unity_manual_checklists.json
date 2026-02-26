@@ -293,7 +293,7 @@
       "item_text": "QA team sign-off obtained",
       "description": "QA approval recorded for final handover.",
       "is_mandatory": true,
-      "requires_photo": false
+      "requires_photo": true
     },
     {
       "item_text": "Customer acceptance signature collected",

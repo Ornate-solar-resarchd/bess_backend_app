@@ -34,6 +34,7 @@ from app.domains.bess_unit.schemas import (
     ScanResponse,
 )
 from app.domains.engineer.tasks import auto_assign_engineer_task
+from app.domains.installation.service import ensure_handover_document
 from app.domains.installation.repository import checklist_repository
 from app.domains.master.models import City, Country, ProductModel
 from app.domains.master.normalization import build_product_description, normalize_hess_to_uess
@@ -685,6 +686,10 @@ async def transition_stage(
     if pending:
         raise ChecklistIncompleteException(pending)
 
+    handover_report_url: str | None = None
+    if to_stage == BESSStage.ACTIVE:
+        handover_report_url = await ensure_handover_document(db, bess_unit_id)
+
     async with atomic(db, serializable=True) as session:
         unit.current_stage = to_stage
         if to_stage == BESSStage.ACTIVE:
@@ -712,6 +717,33 @@ async def transition_stage(
                 payload_json={"from": from_stage.value, "to": to_stage.value, "notes": notes},
             ),
         )
+
+        if handover_report_url:
+            cert = await bess_repository.create_stage_certificate(
+                session,
+                StageCertificate(
+                    bess_unit_id=bess_unit_id,
+                    stage=BESSStage.FINAL_ACCEPTANCE,
+                    certificate_name="AUTO_HANDOVER_DOCUMENT",
+                    certificate_url=handover_report_url,
+                    notes="Auto-generated after final acceptance completion.",
+                    uploaded_by_user_id=current_user.id,
+                ),
+            )
+            await bess_repository.create_audit_log(
+                session,
+                AuditLog(
+                    user_id=current_user.id,
+                    action="STAGE_CERTIFICATE_ADD",
+                    entity_type="StageCertificate",
+                    entity_id=cert.id,
+                    payload_json={
+                        "bess_unit_id": bess_unit_id,
+                        "stage": BESSStage.FINAL_ACCEPTANCE.value,
+                        "certificate_name": "AUTO_HANDOVER_DOCUMENT",
+                    },
+                ),
+            )
 
     if to_stage in SITE_STAGES:
         auto_assign_engineer_task.delay(bess_unit_id, to_stage.value)

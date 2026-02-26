@@ -14,6 +14,7 @@ from app.domains.installation.schemas import (
 )
 from app.domains.installation.service import (
     export_checklist_pdf,
+    export_handover_pdf,
     get_stage_checklist,
     update_checklist_item,
     validate_stage_checklist,
@@ -107,4 +108,14 @@ async def download_checklist_pdf(
     _: User = Depends(require_permission("checklist:read")),
 ) -> FileResponse:
     report = await export_checklist_pdf(db, bess_unit_id)
+    return FileResponse(path=report, media_type="application/pdf", filename=report.name)
+
+
+@router.get("/{bess_unit_id}/handover-document/pdf", response_class=FileResponse)
+async def download_handover_pdf(
+    bess_unit_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("checklist:read")),
+) -> FileResponse:
+    report = await export_handover_pdf(db, bess_unit_id)
     return FileResponse(path=report, media_type="application/pdf", filename=report.name)

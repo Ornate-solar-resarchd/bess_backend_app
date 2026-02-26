@@ -119,6 +119,58 @@ async def test_transition_stage_success_updates_state_and_triggers_auto_assign(
     delay_mock.assert_called_once_with(1, BESSStage.SITE_ARRIVED.value)
 
 
+@pytest.mark.asyncio
+async def test_transition_to_active_generates_handover_certificate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unit = SimpleNamespace(
+        id=1,
+        current_stage=BESSStage.FINAL_ACCEPTANCE,
+        is_deleted=False,
+        is_active=False,
+    )
+
+    create_history = AsyncMock()
+    create_audit = AsyncMock()
+    create_cert = AsyncMock(return_value=SimpleNamespace(id=77))
+    ensure_handover = AsyncMock(return_value="/media/reports/handover_document_bess_1.pdf")
+    delay_mock = Mock()
+    db = object()
+
+    monkeypatch.setattr(bess_service, "atomic", fake_atomic)
+    monkeypatch.setattr(bess_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(
+        bess_service.checklist_repository,
+        "get_incomplete_mandatory",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(bess_service, "ensure_handover_document", ensure_handover)
+    monkeypatch.setattr(bess_service.bess_repository, "create_stage_history", create_history)
+    monkeypatch.setattr(bess_service.bess_repository, "create_stage_certificate", create_cert)
+    monkeypatch.setattr(bess_service.bess_repository, "create_audit_log", create_audit)
+    monkeypatch.setattr(bess_service.auto_assign_engineer_task, "delay", delay_mock)
+
+    result = await bess_service.transition_stage(
+        bess_unit_id=1,
+        to_stage=BESSStage.ACTIVE,
+        notes="Final handover completed",
+        current_user=SimpleNamespace(id=10),
+        db=db,
+    )
+
+    assert result.current_stage == BESSStage.ACTIVE
+    assert result.is_active is True
+    ensure_handover.assert_awaited_once_with(db, 1)
+    assert create_history.await_count == 1
+    assert create_cert.await_count == 1
+    cert_payload = create_cert.await_args.args[1]
+    assert cert_payload.stage == BESSStage.FINAL_ACCEPTANCE
+    assert cert_payload.certificate_name == "AUTO_HANDOVER_DOCUMENT"
+    assert cert_payload.certificate_url == "/media/reports/handover_document_bess_1.pdf"
+    assert create_audit.await_count == 2
+    delay_mock.assert_not_called()
+
+
 def test_ensure_qr_file_creates_png(tmp_path: object, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(bess_service.settings, "media_root", str(tmp_path))
     monkeypatch.setattr(bess_service.settings, "qr_code_base_url", "https://example.com")
