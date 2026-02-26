@@ -11,10 +11,12 @@ from app.domains.installation.schemas import (
     ChecklistItemRead,
     ChecklistUpdateRequest,
     ChecklistValidationResponse,
+    HandoverDocumentDataRead,
 )
 from app.domains.installation.service import (
     export_checklist_pdf,
     export_handover_pdf,
+    get_handover_document_data,
     get_stage_checklist,
     update_checklist_item,
     validate_stage_checklist,
@@ -119,3 +121,12 @@ async def download_handover_pdf(
 ) -> FileResponse:
     report = await export_handover_pdf(db, bess_unit_id)
     return FileResponse(path=report, media_type="application/pdf", filename=report.name)
+
+
+@router.get("/{bess_unit_id}/handover-document/data", response_model=HandoverDocumentDataRead)
+async def handover_document_data(
+    bess_unit_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("checklist:read")),
+) -> HandoverDocumentDataRead:
+    return await get_handover_document_data(db, bess_unit_id)

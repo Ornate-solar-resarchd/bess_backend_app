@@ -273,3 +273,120 @@ async def test_export_handover_pdf_creates_document_when_signatures_present(
 
     assert output.exists()
     assert output.name == "handover_document_bess_1.pdf"
+
+
+@pytest.mark.asyncio
+async def test_get_handover_document_data_returns_full_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime.now(UTC)
+    unit = SimpleNamespace(
+        id=1,
+        serial_number="BESS-001",
+        is_deleted=False,
+        site_address="Site A",
+        site_latitude=28.61,
+        site_longitude=77.20,
+        customer_user_id=55,
+        current_stage=BESSStage.FINAL_ACCEPTANCE,
+        manufactured_date=now,
+        product_model=SimpleNamespace(model_number="UESS-125-261-OS", capacity_kwh=261.0),
+        country=SimpleNamespace(name="India"),
+        city=SimpleNamespace(name="Delhi"),
+        warehouse=SimpleNamespace(name="WH-DEL-01"),
+    )
+
+    engineer_item = SimpleNamespace(
+        checklist_template_id=901,
+        stage=BESSStage.FINAL_ACCEPTANCE,
+        item_text="QA team sign-off obtained",
+        description="QA sign",
+        safety_warning=None,
+        is_mandatory=True,
+        requires_photo=False,
+        order_index=1,
+        is_checked=True,
+        notes="signed",
+        photo_url="/media/checklist_photos/engineer-sign.png",
+        checked_by_user_id=9,
+        checked_at=now,
+    )
+    customer_item = SimpleNamespace(
+        checklist_template_id=902,
+        stage=BESSStage.FINAL_ACCEPTANCE,
+        item_text="Customer acceptance signature collected",
+        description="Customer sign",
+        safety_warning=None,
+        is_mandatory=True,
+        requires_photo=True,
+        order_index=2,
+        is_checked=True,
+        notes="signed",
+        photo_url="/media/checklist_photos/customer-sign.png",
+        checked_by_user_id=55,
+        checked_at=now,
+    )
+    civil_item = SimpleNamespace(
+        checklist_template_id=301,
+        stage=BESSStage.CIVIL_INSTALLATION,
+        item_text="Foundation complete",
+        description="Foundation check",
+        safety_warning=None,
+        is_mandatory=True,
+        requires_photo=False,
+        order_index=1,
+        is_checked=True,
+        notes="done",
+        photo_url=None,
+        checked_by_user_id=9,
+        checked_at=now,
+    )
+
+    class _FakeDB:
+        async def get(self, _model: object, user_id: int):
+            if user_id == 9:
+                return SimpleNamespace(full_name="Engineer One")
+            if user_id == 55:
+                return SimpleNamespace(full_name="Customer One")
+            return None
+
+    async def _fake_stage_items(_db: object, _bess_id: int, stage: BESSStage):
+        if stage == BESSStage.FINAL_ACCEPTANCE:
+            return [engineer_item, customer_item]
+        if stage == BESSStage.CIVIL_INSTALLATION:
+            return [civil_item]
+        return []
+
+    monkeypatch.setattr(
+        installation_service.bess_repository,
+        "get_by_id",
+        AsyncMock(return_value=unit),
+    )
+    monkeypatch.setattr(
+        installation_service.checklist_repository,
+        "get_stage_items",
+        _fake_stage_items,
+    )
+    monkeypatch.setattr(
+        installation_service,
+        "_load_template_meta",
+        lambda: {
+            "template_name": "Unity Manual Checklist",
+            "template_version": "2026-02-24",
+            "checklist_logo_dark": "docs/assets/unityess-logo-dark.png",
+            "checklist_logo_light": "docs/assets/unityess-logo-light.png",
+            "brand_logo": "docs/assets/ornate-solar-logo.png",
+        },
+    )
+
+    payload = await installation_service.get_handover_document_data(_FakeDB(), 1)
+
+    assert payload.bess.serial_number == "BESS-001"
+    assert payload.bess.model_number == "UESS-125-261-OS"
+    assert payload.bess.model_capacity_kwh == 261.0
+    assert payload.branding.template_name == "Unity Manual Checklist"
+    assert payload.signatures[0].role == "SITE_ENGINEER"
+    assert payload.signatures[1].role == "CUSTOMER"
+    assert payload.signatures[0].photo_url == "/media/checklist_photos/engineer-sign.png"
+    assert payload.signatures[1].photo_url == "/media/checklist_photos/customer-sign.png"
+    assert any(stage.stage == BESSStage.FINAL_ACCEPTANCE for stage in payload.stages)
