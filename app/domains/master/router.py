@@ -15,9 +15,12 @@ from app.domains.master.schemas import (
     PaginatedCities,
     PaginatedCountries,
     PaginatedProductModels,
+    PaginatedSites,
     PaginatedWarehouses,
     ProductModelCreate,
     ProductModelRead,
+    SiteCreate,
+    SiteRead,
     WarehouseCreate,
     WarehouseRead,
 )
@@ -98,6 +101,37 @@ async def create_warehouse(
 ) -> WarehouseRead:
     obj = await service.create_warehouse(db, payload, current_user)
     return WarehouseRead.model_validate(obj)
+
+
+@router.get("/sites", response_model=PaginatedSites, dependencies=[Depends(require_permission("master:read"))])
+async def get_sites(
+    city_id: int | None = None,
+    country_id: int | None = None,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedSites:
+    total, items = await service.list_sites(db, page, size, city_id, country_id)
+    return PaginatedSites(
+        total=total,
+        items=[SiteRead.model_validate(i) for i in items],
+        page=page,
+        size=size,
+    )
+
+
+@router.post(
+    "/sites",
+    response_model=SiteRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_site(
+    payload: SiteCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("master:write")),
+) -> SiteRead:
+    obj = await service.create_site(db, payload, current_user)
+    return SiteRead.model_validate(obj)
 
 
 @router.get(

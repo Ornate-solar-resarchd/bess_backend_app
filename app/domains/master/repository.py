@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.master.models import City, Country, ProductModel, Warehouse
+from app.domains.master.models import City, Country, ProductModel, Site, Warehouse
 
 
 class MasterRepository:
@@ -56,6 +56,51 @@ class MasterRepository:
 
     async def create_warehouse(self, db: AsyncSession, name: str, city_id: int, address: str | None) -> Warehouse:
         obj = Warehouse(name=name, city_id=city_id, address=address)
+        db.add(obj)
+        await db.flush()
+        await db.refresh(obj)
+        return obj
+
+    async def list_sites(
+        self,
+        db: AsyncSession,
+        page: int,
+        size: int,
+        city_id: int | None,
+        country_id: int | None,
+    ) -> tuple[int, list[Site]]:
+        count_stmt = select(func.count(Site.id))
+        stmt: Select[tuple[Site]] = select(Site)
+        if city_id is not None:
+            count_stmt = count_stmt.where(Site.city_id == city_id)
+            stmt = stmt.where(Site.city_id == city_id)
+        if country_id is not None:
+            count_stmt = count_stmt.where(Site.country_id == country_id)
+            stmt = stmt.where(Site.country_id == country_id)
+        total = await db.scalar(count_stmt)
+        items = (
+            await db.scalars(stmt.order_by(Site.id.desc()).offset((page - 1) * size).limit(size))
+        ).all()
+        return int(total or 0), list(items)
+
+    async def create_site(
+        self,
+        db: AsyncSession,
+        name: str,
+        country_id: int,
+        city_id: int,
+        address: str,
+        latitude: float | None,
+        longitude: float | None,
+    ) -> Site:
+        obj = Site(
+            name=name,
+            country_id=country_id,
+            city_id=city_id,
+            address=address,
+            latitude=latitude,
+            longitude=longitude,
+        )
         db.add(obj)
         await db.flush()
         await db.refresh(obj)

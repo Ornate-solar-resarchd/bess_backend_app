@@ -60,6 +60,27 @@ class WarehouseRead(BaseModel):
     address: str | None
 
 
+class SiteCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    country_id: int
+    city_id: int
+    address: str = Field(min_length=1)
+    latitude: float | None = None
+    longitude: float | None = None
+
+
+class SiteRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    country: NestedCountry
+    city: NestedCity
+    address: str
+    latitude: float | None
+    longitude: float | None
+
+
 class ProductModelCreate(BaseModel):
     model_number: str
     capacity_kwh: float
@@ -93,6 +114,13 @@ class PaginatedCities(BaseModel):
 class PaginatedWarehouses(BaseModel):
     total: int
     items: list[WarehouseRead]
+    page: int
+    size: int
+
+
+class PaginatedSites(BaseModel):
+    total: int
+    items: list[SiteRead]
     page: int
     size: int
 

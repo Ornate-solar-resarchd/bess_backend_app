@@ -34,6 +34,20 @@ class Warehouse(Base, TimestampMixin):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class Site(Base, TimestampMixin):
+    __tablename__ = "sites"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+    country: Mapped[Country] = relationship(lazy="selectin", foreign_keys=[country_id])
+    city_id: Mapped[int] = mapped_column(ForeignKey("cities.id"), nullable=False)
+    city: Mapped[City] = relationship(lazy="selectin", foreign_keys=[city_id])
+    address: Mapped[str] = mapped_column(Text, nullable=False)
+    latitude: Mapped[float | None] = mapped_column(nullable=True)
+    longitude: Mapped[float | None] = mapped_column(nullable=True)
+
+
 class ProductModel(Base, TimestampMixin):
     __tablename__ = "product_models"
 

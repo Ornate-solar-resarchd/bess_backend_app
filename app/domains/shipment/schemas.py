@@ -12,6 +12,8 @@ class ShipmentCreate(BaseModel):
     shipment_code: str
     origin_country_id: int
     destination_country_id: int
+    warehouse_id: int | None = None
+    site_id: int | None = None
     created_date: date | None = None
     expected_arrival_date: date | None = None
     expected_quantity: int = Field(default=1, ge=1)
@@ -24,6 +26,8 @@ class ShipmentRead(BaseModel):
     shipment_code: str
     origin_country_id: int
     destination_country_id: int
+    warehouse_id: int | None = None
+    site_id: int | None = None
     created_date: date | None = None
     expected_arrival_date: date | None = None
     expected_quantity: int
@@ -41,6 +45,14 @@ class ShipmentBulkItemAssign(BaseModel):
 
 class ShipmentStatusUpdate(BaseModel):
     status: ShipmentStatus
+
+
+class ShipmentWarehouseAssign(BaseModel):
+    warehouse_id: int
+
+
+class ShipmentSiteAssign(BaseModel):
+    site_id: int
 
 
 class PaginatedShipments(BaseModel):

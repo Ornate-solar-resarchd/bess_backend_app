@@ -95,6 +95,7 @@ async def test_transition_stage_success_updates_state_and_triggers_auto_assign(
 
     monkeypatch.setattr(bess_service, "atomic", fake_atomic)
     monkeypatch.setattr(bess_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(bess_service.bess_repository, "count_stage_certificates", AsyncMock(return_value=1))
     monkeypatch.setattr(
         bess_service.checklist_repository,
         "get_incomplete_mandatory",
@@ -224,6 +225,36 @@ async def test_transition_stage_requires_certificate_for_port_stage(
             bess_unit_id=1,
             to_stage=BESSStage.PORT_CLEARED,
             notes="try move without cert",
+            current_user=SimpleNamespace(id=5),
+            db=object(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_transition_stage_to_dispatched_requires_site_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unit = SimpleNamespace(
+        id=1,
+        current_stage=BESSStage.WAREHOUSE_STORED,
+        is_deleted=False,
+        is_active=False,
+        warehouse_id=1,
+        site_address=None,
+    )
+    monkeypatch.setattr(bess_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(bess_service.bess_repository, "count_stage_certificates", AsyncMock(return_value=1))
+    monkeypatch.setattr(
+        bess_service.checklist_repository,
+        "get_incomplete_mandatory",
+        AsyncMock(return_value=[]),
+    )
+
+    with pytest.raises(APIValidationException):
+        await bess_service.transition_stage(
+            bess_unit_id=1,
+            to_stage=BESSStage.DISPATCHED_TO_SITE,
+            notes="dispatching",
             current_user=SimpleNamespace(id=5),
             db=object(),
         )

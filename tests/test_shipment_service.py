@@ -295,3 +295,152 @@ async def test_upload_shipment_document_uses_s3_when_enabled(
     assert result.document_url == "https://cdn.example.com/shipment_documents/1/doc001.pdf"
     created_payload = shipment_service.shipment_repository.create_document.await_args.args[1]
     assert created_payload.document_url == "https://cdn.example.com/shipment_documents/1/doc001.pdf"
+
+
+@pytest.mark.asyncio
+async def test_update_shipment_status_port_cleared_requires_document(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(
+        id=1,
+        status=ShipmentStatus.ARRIVED,
+        warehouse_id=None,
+        site_id=None,
+        expected_quantity=1,
+    )
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+    monkeypatch.setattr(shipment_service.shipment_repository, "count_documents_by_type", AsyncMock(return_value=0))
+
+    with pytest.raises(APIConflictException):
+        await shipment_service.update_shipment_status(
+            db=object(),
+            shipment_id=1,
+            status=ShipmentStatus.PORT_CLEARED,
+            current_user=SimpleNamespace(id=10),
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_shipment_status_warehouse_stored_requires_warehouse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(
+        id=1,
+        status=ShipmentStatus.PORT_CLEARED,
+        warehouse_id=None,
+        site_id=None,
+        expected_quantity=1,
+    )
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+
+    with pytest.raises(APIConflictException):
+        await shipment_service.update_shipment_status(
+            db=object(),
+            shipment_id=1,
+            status=ShipmentStatus.WAREHOUSE_STORED,
+            current_user=SimpleNamespace(id=10),
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_shipment_status_dispatched_requires_site(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(
+        id=1,
+        status=ShipmentStatus.WAREHOUSE_STORED,
+        warehouse_id=7,
+        site_id=None,
+        expected_quantity=1,
+    )
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+
+    with pytest.raises(APIConflictException):
+        await shipment_service.update_shipment_status(
+            db=object(),
+            shipment_id=1,
+            status=ShipmentStatus.DISPATCHED_TO_SITE,
+            current_user=SimpleNamespace(id=10),
+        )
+
+
+@pytest.mark.asyncio
+async def test_assign_shipment_warehouse_updates_linked_units(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(id=1, warehouse_id=None)
+    warehouse = SimpleNamespace(id=9)
+    linked_item = SimpleNamespace(bess_unit_id=1001)
+    unit = SimpleNamespace(id=1001, is_deleted=False, warehouse_id=None)
+    db = SimpleNamespace(get=AsyncMock(return_value=warehouse))
+
+    monkeypatch.setattr(shipment_service, "atomic", fake_atomic)
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+    monkeypatch.setattr(
+        shipment_service.shipment_repository,
+        "list_all_shipment_items",
+        AsyncMock(return_value=[linked_item]),
+    )
+    monkeypatch.setattr(shipment_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(shipment_service.bess_repository, "create_audit_log", AsyncMock(return_value=None))
+
+    updated = await shipment_service.assign_shipment_warehouse(
+        db=db,
+        shipment_id=1,
+        payload=SimpleNamespace(warehouse_id=9),
+        current_user=SimpleNamespace(id=1),
+    )
+
+    assert updated.warehouse_id == 9
+    assert unit.warehouse_id == 9
+
+
+@pytest.mark.asyncio
+async def test_assign_shipment_site_updates_linked_units(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    shipment = SimpleNamespace(id=1, site_id=None, destination_country_id=99)
+    site = SimpleNamespace(
+        id=5,
+        country_id=1,
+        city_id=2,
+        address="Plant A, Block 12",
+        latitude=20.12,
+        longitude=72.22,
+    )
+    linked_item = SimpleNamespace(bess_unit_id=2001)
+    unit = SimpleNamespace(
+        id=2001,
+        is_deleted=False,
+        country_id=99,
+        city_id=88,
+        site_address=None,
+        site_latitude=None,
+        site_longitude=None,
+    )
+    db = SimpleNamespace(get=AsyncMock(return_value=site))
+
+    monkeypatch.setattr(shipment_service, "atomic", fake_atomic)
+    monkeypatch.setattr(shipment_service.shipment_repository, "get_shipment", AsyncMock(return_value=shipment))
+    monkeypatch.setattr(
+        shipment_service.shipment_repository,
+        "list_all_shipment_items",
+        AsyncMock(return_value=[linked_item]),
+    )
+    monkeypatch.setattr(shipment_service.bess_repository, "get_by_id", AsyncMock(return_value=unit))
+    monkeypatch.setattr(shipment_service.bess_repository, "create_audit_log", AsyncMock(return_value=None))
+
+    updated = await shipment_service.assign_shipment_site(
+        db=db,
+        shipment_id=1,
+        payload=SimpleNamespace(site_id=5),
+        current_user=SimpleNamespace(id=1),
+    )
+
+    assert updated.site_id == 5
+    assert updated.destination_country_id == 1
+    assert unit.country_id == 1
+    assert unit.city_id == 2
+    assert unit.site_address == "Plant A, Block 12"
+    assert unit.site_latitude == 20.12
+    assert unit.site_longitude == 72.22

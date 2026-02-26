@@ -17,6 +17,8 @@ class Shipment(Base, TimestampMixin):
     shipment_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     origin_country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
     destination_country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+    warehouse_id: Mapped[int | None] = mapped_column(ForeignKey("warehouses.id"), nullable=True)
+    site_id: Mapped[int | None] = mapped_column(ForeignKey("sites.id"), nullable=True)
     created_date: Mapped[date | None] = mapped_column(nullable=True)
     expected_arrival_date: Mapped[date | None] = mapped_column(nullable=True)
     expected_quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

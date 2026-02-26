@@ -681,6 +681,8 @@ async def transition_stage(
 
     if to_stage == BESSStage.WAREHOUSE_STORED and unit.warehouse_id is None:
         raise APIValidationException("Set warehouse_id via PATCH /api/v1/bess/{id} before WAREHOUSE_STORED stage.")
+    if to_stage == BESSStage.DISPATCHED_TO_SITE and not unit.site_address:
+        raise APIValidationException("Set site details before DISPATCHED_TO_SITE stage.")
 
     pending = await checklist_repository.get_incomplete_mandatory(db, bess_unit_id, unit.current_stage)
     if pending:

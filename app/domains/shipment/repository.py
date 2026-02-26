@@ -90,6 +90,15 @@ class ShipmentRepository:
         total = await db.scalar(select(func.count(ShipmentDocument.id)).where(ShipmentDocument.shipment_id == shipment_id))
         return int(total or 0)
 
+    async def count_documents_by_type(self, db: AsyncSession, shipment_id: int, document_type: str) -> int:
+        total = await db.scalar(
+            select(func.count(ShipmentDocument.id)).where(
+                ShipmentDocument.shipment_id == shipment_id,
+                ShipmentDocument.document_type == document_type,
+            )
+        )
+        return int(total or 0)
+
     async def list_documents(
         self,
         db: AsyncSession,

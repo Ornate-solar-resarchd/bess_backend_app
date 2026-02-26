@@ -12,7 +12,7 @@ from app.domains.bess_unit.models import AuditLog, BESSUnit, StageCertificate, S
 from app.domains.commissioning.models import CommissioningRecord
 from app.domains.engineer.models import Engineer, SiteAssignment
 from app.domains.installation.models import ChecklistResponse, ChecklistTemplate
-from app.domains.master.models import City, Country, ProductModel, Warehouse
+from app.domains.master.models import City, Country, ProductModel, Site, Warehouse
 from app.domains.rbac.models import Permission, Role, RolePermission, UserRole
 from app.domains.shipment.models import Shipment, ShipmentDocument, ShipmentItem
 
@@ -96,6 +96,11 @@ class CityAdmin(ModelView, model=City):
 class WarehouseAdmin(ModelView, model=Warehouse):
     column_list = [Warehouse.id, Warehouse.name, Warehouse.city_id, Warehouse.address, Warehouse.created_at]
     column_searchable_list = [Warehouse.name]
+
+
+class SiteAdmin(ModelView, model=Site):
+    column_list = [Site.id, Site.name, Site.country_id, Site.city_id, Site.address, Site.created_at]
+    column_searchable_list = [Site.name, Site.address]
 
 
 class ProductModelAdmin(ModelView, model=ProductModel):
@@ -256,6 +261,7 @@ def setup_admin(app: FastAPI, secret_key: str) -> None:
     admin.add_view(CountryAdmin)
     admin.add_view(CityAdmin)
     admin.add_view(WarehouseAdmin)
+    admin.add_view(SiteAdmin)
     admin.add_view(ProductModelAdmin)
     admin.add_view(BESSUnitAdmin)
     admin.add_view(StageHistoryAdmin)

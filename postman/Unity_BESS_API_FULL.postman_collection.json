@@ -249,6 +249,53 @@
           "response": []
         },
         {
+          "name": "Login (OAuth Form)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "{{admin_email}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{admin_password}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', data.access_token || '');",
+                  "  pm.collectionVariables.set('refresh_token', data.refresh_token || '');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "Refresh Token",
           "request": {
             "auth": {
@@ -432,6 +479,14 @@
           "response": []
         },
         {
+          "name": "List Sites",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/master/sites?page=1&size=20"
+          },
+          "response": []
+        },
+        {
           "name": "Create Warehouse",
           "request": {
             "method": "POST",
@@ -451,6 +506,29 @@
               }
             },
             "url": "{{base_url}}/master/warehouses"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Site",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Site Alpha\",\n  \"country_id\": {{country_id}},\n  \"city_id\": {{city_id}},\n  \"address\": \"Plot 21, Industrial Zone\",\n  \"latitude\": 28.6139,\n  \"longitude\": 77.2090\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/master/sites"
           },
           "response": []
         },
@@ -960,6 +1038,14 @@
             "url": "{{base_url}}/bess/{{bess_unit_id}}/checklist-report/pdf"
           },
           "response": []
+        },
+        {
+          "name": "Download Handover PDF Report",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/handover-document/pdf"
+          },
+          "response": []
         }
       ]
     },
@@ -1070,6 +1156,52 @@
           "request": {
             "method": "GET",
             "url": "{{base_url}}/shipments/{{shipment_id}}/units?page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Shipment Warehouse",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouse_id\": {{warehouse_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/warehouse"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Shipment Site",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"site_id\": {{site_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/shipments/{{shipment_id}}/site"
           },
           "response": []
         },

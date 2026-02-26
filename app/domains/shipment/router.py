@@ -15,11 +15,15 @@ from app.domains.shipment.schemas import (
     ShipmentCreate,
     ShipmentDocumentRead,
     ShipmentItemAssign,
+    ShipmentSiteAssign,
     ShipmentRead,
     ShipmentStatusUpdate,
+    ShipmentWarehouseAssign,
 )
 from app.domains.shipment.service import (
     assign_unit_to_shipment,
+    assign_shipment_site,
+    assign_shipment_warehouse,
     assign_units_to_shipment_bulk,
     create_shipment,
     get_shipment_detail,
@@ -94,6 +98,28 @@ async def list_shipment_units_endpoint(
     _: User = Depends(require_permission("shipment:read")),
 ) -> PaginatedShipmentItems:
     return await list_shipment_units(db, shipment_id, page, size)
+
+
+@router.patch("/{shipment_id}/warehouse", response_model=ShipmentRead)
+async def assign_shipment_warehouse_endpoint(
+    shipment_id: int,
+    payload: ShipmentWarehouseAssign,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("shipment:manage")),
+) -> ShipmentRead:
+    shipment = await assign_shipment_warehouse(db, shipment_id, payload, current_user)
+    return ShipmentRead.model_validate(shipment)
+
+
+@router.patch("/{shipment_id}/site", response_model=ShipmentRead)
+async def assign_shipment_site_endpoint(
+    shipment_id: int,
+    payload: ShipmentSiteAssign,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("shipment:manage")),
+) -> ShipmentRead:
+    shipment = await assign_shipment_site(db, shipment_id, payload, current_user)
+    return ShipmentRead.model_validate(shipment)
 
 
 @router.post("/{shipment_id}/documents/upload", response_model=ShipmentDocumentRead, status_code=status.HTTP_201_CREATED)
