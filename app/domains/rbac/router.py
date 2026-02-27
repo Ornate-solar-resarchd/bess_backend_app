@@ -4,12 +4,31 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user, require_permission, require_role
 from app.domains.auth.models import User
-from app.domains.rbac.schemas import AssignRoleRequest, PaginatedRoles, RoleCreate, RoleRead
-from app.domains.rbac.service import assign_role_to_user, create_role, list_roles, remove_role_from_user
+from app.domains.rbac.schemas import (
+    AssignRoleRequest,
+    PaginatedRoles,
+    PaginatedUsers,
+    RoleCreate,
+    RoleRead,
+    UserListRead,
+)
+from app.domains.rbac.service import assign_role_to_user, create_role, list_roles, list_users, remove_role_from_user
 
 router = APIRouter(prefix="/admin", tags=["RBAC Admin"])
+
+
+@router.get("/users", response_model=PaginatedUsers, dependencies=[Depends(require_permission("user:manage"))])
+async def get_users(
+    page: int = 1,
+    size: int = 20,
+    q: str | None = None,
+    is_active: bool | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedUsers:
+    total, items = await list_users(db, page, size, q, is_active)
+    return PaginatedUsers(total=total, items=[UserListRead.model_validate(i) for i in items], page=page, size=size)
 
 
 @router.get("/roles", response_model=PaginatedRoles, dependencies=[Depends(require_role("SUPER_ADMIN"))])

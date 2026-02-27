@@ -23,6 +23,16 @@ async def list_roles(db: AsyncSession, page: int, size: int):
     return await rbac_repository.list_roles(db, page, size)
 
 
+async def list_users(
+    db: AsyncSession,
+    page: int,
+    size: int,
+    query: str | None = None,
+    is_active: bool | None = None,
+):
+    return await rbac_repository.list_users(db, page, size, query, is_active)
+
+
 async def create_role(db: AsyncSession, payload: RoleCreate, actor_user_id: int | None):
     duplicate = await db.scalar(select(Role).where(Role.name == payload.name))
     if duplicate is not None:

@@ -34,3 +34,21 @@ class PaginatedRoles(BaseModel):
     items: list[RoleRead]
     page: int
     size: int
+
+
+class UserListRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    full_name: str
+    phone: str | None
+    is_active: bool
+    is_verified: bool
+
+
+class PaginatedUsers(BaseModel):
+    total: int
+    items: list[UserListRead]
+    page: int
+    size: int

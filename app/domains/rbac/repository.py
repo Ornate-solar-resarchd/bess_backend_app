@@ -3,10 +3,41 @@ from __future__ import annotations
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.auth.models import User
 from app.domains.rbac.models import Permission, Role, RolePermission, UserRole
 
 
 class RBACRepository:
+    async def list_users(
+        self,
+        db: AsyncSession,
+        page: int,
+        size: int,
+        query: str | None = None,
+        is_active: bool | None = None,
+    ) -> tuple[int, list[User]]:
+        count_stmt = select(func.count(User.id))
+        stmt: Select[tuple[User]] = select(User)
+
+        if is_active is not None:
+            count_stmt = count_stmt.where(User.is_active.is_(is_active))
+            stmt = stmt.where(User.is_active.is_(is_active))
+
+        normalized_query = (query or "").strip()
+        if normalized_query:
+            like_value = f"%{normalized_query}%"
+            search_filter = User.full_name.ilike(like_value) | User.email.ilike(like_value) | User.phone.ilike(
+                like_value
+            )
+            count_stmt = count_stmt.where(search_filter)
+            stmt = stmt.where(search_filter)
+
+        total = await db.scalar(count_stmt)
+        items = (
+            await db.scalars(stmt.order_by(User.id.asc()).offset((page - 1) * size).limit(size))
+        ).all()
+        return int(total or 0), list(items)
+
     async def list_roles(self, db: AsyncSession, page: int, size: int) -> tuple[int, list[Role]]:
         total = await db.scalar(select(func.count(Role.id)))
         stmt: Select[tuple[Role]] = select(Role).offset((page - 1) * size).limit(size).order_by(Role.id)
