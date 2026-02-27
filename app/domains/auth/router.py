@@ -4,10 +4,13 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.dependencies import AuthContext, get_auth_context
 from app.domains.auth import service
 from app.domains.auth.schemas import (
     AuthResponse,
     LoginRequest,
+    LoginResponse,
+    MeResponse,
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
@@ -40,13 +43,22 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     return AuthResponse(user=UserRead.model_validate(user), tokens=tokens)
 
 
-@router.post("/login", response_model=TokenResponse)
-async def login(request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+@router.post("/login", response_model=LoginResponse)
+async def login(request: Request, db: AsyncSession = Depends(get_db)) -> LoginResponse:
     payload = await _parse_login_request(request)
     user = await service.authenticate(db, payload)
-    return await service.issue_tokens(db, user)
+    return await service.issue_login_response(db, user)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     return await service.refresh_tokens(db, payload.refresh_token)
+
+
+@router.get("/me", response_model=MeResponse)
+async def me(context: AuthContext = Depends(get_auth_context)) -> MeResponse:
+    return MeResponse(
+        user=UserRead.model_validate(context.user),
+        roles=context.roles,
+        permissions=context.permissions,
+    )

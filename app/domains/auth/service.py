@@ -13,7 +13,7 @@ from app.core.security import (
 from app.domains.bess_unit.models import AuditLog
 from app.domains.bess_unit.repository import bess_repository
 from app.domains.auth.models import User
-from app.domains.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
+from app.domains.auth.schemas import LoginRequest, LoginResponse, RegisterRequest, TokenResponse, UserRead
 from app.domains.rbac.models import Role, UserRole
 from app.domains.rbac.service import get_user_roles_permissions
 from app.shared.acid import atomic
@@ -70,6 +70,23 @@ async def issue_tokens(db: AsyncSession, user: User) -> TokenResponse:
         "permissions": permissions,
     }
     return TokenResponse(
+        access_token=create_access_token(base_payload),
+        refresh_token=create_refresh_token(base_payload),
+    )
+
+
+async def issue_login_response(db: AsyncSession, user: User) -> LoginResponse:
+    roles, permissions = await get_user_roles_permissions(db, user.id)
+    base_payload: dict[str, object] = {
+        "sub": str(user.id),
+        "email": user.email,
+        "roles": roles,
+        "permissions": permissions,
+    }
+    return LoginResponse(
+        user=UserRead.model_validate(user),
+        roles=roles,
+        permissions=permissions,
         access_token=create_access_token(base_payload),
         refresh_token=create_refresh_token(base_payload),
     )

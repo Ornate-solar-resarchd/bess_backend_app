@@ -39,3 +39,18 @@ class TokenResponse(BaseModel):
 class AuthResponse(BaseModel):
     user: UserRead
     tokens: TokenResponse
+
+
+class MeResponse(BaseModel):
+    user: UserRead
+    roles: list[str]
+    permissions: list[str]
+
+
+class LoginResponse(BaseModel):
+    user: UserRead
+    roles: list[str]
+    permissions: list[str]
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
