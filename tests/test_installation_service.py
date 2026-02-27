@@ -390,3 +390,5 @@ async def test_get_handover_document_data_returns_full_payload(
     assert payload.signatures[0].photo_url == "/media/checklist_photos/engineer-sign.png"
     assert payload.signatures[1].photo_url == "/media/checklist_photos/customer-sign.png"
     assert any(stage.stage == BESSStage.FINAL_ACCEPTANCE for stage in payload.stages)
+    assert payload.qr_payload is not None
+    assert payload.qr_payload["bess"]["serial_number"] == "BESS-001"

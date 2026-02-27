@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -97,3 +98,4 @@ class HandoverDocumentDataRead(BaseModel):
     bess: HandoverBESSDetailsRead
     signatures: list[HandoverSignatureRead]
     stages: list[HandoverChecklistStageRead]
+    qr_payload: dict[str, Any] | None = None
