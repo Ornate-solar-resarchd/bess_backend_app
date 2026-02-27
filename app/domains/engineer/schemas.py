@@ -65,3 +65,20 @@ class PaginatedAssignments(BaseModel):
     items: list[SiteAssignmentRead]
     page: int
     size: int
+
+
+class EngineerCandidateUserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    full_name: str
+    phone: str | None
+    is_active: bool
+
+
+class PaginatedEngineerCandidateUsers(BaseModel):
+    total: int
+    items: list[EngineerCandidateUserRead]
+    page: int
+    size: int

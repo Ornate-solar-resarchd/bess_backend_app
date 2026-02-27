@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import Select, and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.auth.models import User
 from app.domains.engineer.models import Engineer, SiteAssignment
 from app.shared.enums import AssignmentStatus, BESSStage, Specialization
 from app.shared.exceptions import EngineerNotAvailableException
@@ -41,6 +42,38 @@ class EngineerRepository:
         total = await db.scalar(count_stmt)
         items = (
             await db.scalars(stmt.order_by(Engineer.id).offset((page - 1) * size).limit(size))
+        ).all()
+        return int(total or 0), list(items)
+
+    async def list_candidate_users(
+        self,
+        db: AsyncSession,
+        page: int,
+        size: int,
+        query: str | None,
+        unassigned_only: bool,
+    ) -> tuple[int, list[User]]:
+        count_stmt = select(func.count(User.id)).where(User.is_active.is_(True))
+        stmt: Select[tuple[User]] = select(User).where(User.is_active.is_(True))
+
+        if unassigned_only:
+            count_stmt = count_stmt.outerjoin(Engineer, Engineer.user_id == User.id).where(Engineer.id.is_(None))
+            stmt = stmt.outerjoin(Engineer, Engineer.user_id == User.id).where(Engineer.id.is_(None))
+
+        normalized_query = (query or "").strip()
+        if normalized_query:
+            like_value = f"%{normalized_query}%"
+            search_filter = (
+                User.full_name.ilike(like_value)
+                | User.email.ilike(like_value)
+                | User.phone.ilike(like_value)
+            )
+            count_stmt = count_stmt.where(search_filter)
+            stmt = stmt.where(search_filter)
+
+        total = await db.scalar(count_stmt)
+        items = (
+            await db.scalars(stmt.order_by(User.id.asc()).offset((page - 1) * size).limit(size))
         ).all()
         return int(total or 0), list(items)
 

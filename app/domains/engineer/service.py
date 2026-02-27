@@ -56,6 +56,22 @@ async def list_available_engineers(
     return await engineer_repository.list_available(db, page, size, city_id, specialization)
 
 
+async def list_engineer_candidate_users(
+    db: AsyncSession,
+    page: int,
+    size: int,
+    query: str | None,
+    unassigned_only: bool,
+):
+    return await engineer_repository.list_candidate_users(
+        db=db,
+        page=page,
+        size=size,
+        query=query,
+        unassigned_only=unassigned_only,
+    )
+
+
 async def auto_assign_engineer(
     bess_unit_id: int,
     stage: BESSStage,

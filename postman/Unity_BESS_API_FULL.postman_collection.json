@@ -1046,6 +1046,14 @@
             "url": "{{base_url}}/bess/{{bess_unit_id}}/handover-document/pdf"
           },
           "response": []
+        },
+        {
+          "name": "Get Handover Document Data",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bess/{{bess_unit_id}}/handover-document/data"
+          },
+          "response": []
         }
       ]
     },
@@ -1316,6 +1324,14 @@
           "request": {
             "method": "GET",
             "url": "{{base_url}}/engineers/available?city_id={{city_id}}&stage=SITE_ARRIVED&page=1&size=20"
+          },
+          "response": []
+        },
+        {
+          "name": "List Candidate Users For Engineer",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/engineers/candidate-users?unassigned_only=true&page=1&size=20&q="
           },
           "response": []
         },

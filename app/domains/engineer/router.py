@@ -7,10 +7,12 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.domains.auth.models import User
 from app.domains.engineer.schemas import (
+    EngineerCandidateUserRead,
     EngineerCreate,
     EngineerRead,
     ManualAssignmentCreate,
     PaginatedAssignments,
+    PaginatedEngineerCandidateUsers,
     PaginatedEngineers,
     SiteAssignmentRead,
 )
@@ -21,6 +23,7 @@ from app.domains.engineer.service import (
     decline_assignment,
     list_assignments_for_bess,
     list_available_engineers,
+    list_engineer_candidate_users,
     list_my_assignments,
     manual_assign_engineer,
 )
@@ -50,6 +53,24 @@ async def list_available_engineers_endpoint(
 ) -> PaginatedEngineers:
     total, items = await list_available_engineers(db, page, size, city_id, stage)
     return PaginatedEngineers(total=total, items=[EngineerRead.model_validate(e) for e in items], page=page, size=size)
+
+
+@router.get("/engineers/candidate-users", response_model=PaginatedEngineerCandidateUsers)
+async def list_candidate_users_endpoint(
+    q: str | None = None,
+    unassigned_only: bool = True,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("user:manage")),
+) -> PaginatedEngineerCandidateUsers:
+    total, items = await list_engineer_candidate_users(db, page, size, q, unassigned_only)
+    return PaginatedEngineerCandidateUsers(
+        total=total,
+        items=[EngineerCandidateUserRead.model_validate(item) for item in items],
+        page=page,
+        size=size,
+    )
 
 
 @router.get("/engineers/my-assignments", response_model=PaginatedAssignments)
