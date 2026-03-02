@@ -181,7 +181,14 @@ async def list_my_assignments(db: AsyncSession, current_user: User, page: int, s
     engineer = await engineer_repository.get_engineer_by_user_id(db, current_user.id)
     if engineer is None:
         raise APINotFoundException("Engineer profile not found")
-    return await engineer_repository.list_assignments_for_engineer(db, engineer.id, page, size)
+    total, assignments = await engineer_repository.list_assignments_for_engineer(db, engineer.id, page, size)
+    assigner_names = await engineer_repository.get_assignment_assigner_names(
+        db,
+        [assignment.id for assignment in assignments],
+    )
+    for assignment in assignments:
+        setattr(assignment, "assigned_by_name", assigner_names.get(assignment.id))
+    return total, assignments
 
 
 async def accept_assignment(db: AsyncSession, assignment_id: int, current_user: User):

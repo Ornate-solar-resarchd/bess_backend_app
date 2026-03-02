@@ -32,6 +32,8 @@ dist/
 
 # Local environment files
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 .env.dev

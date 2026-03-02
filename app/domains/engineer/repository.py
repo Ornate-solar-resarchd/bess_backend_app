@@ -4,6 +4,7 @@ from sqlalchemy import Select, and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.models import User
+from app.domains.bess_unit.models import AuditLog
 from app.domains.engineer.models import Engineer, SiteAssignment
 from app.shared.enums import AssignmentStatus, BESSStage, Specialization
 from app.shared.exceptions import EngineerNotAvailableException
@@ -175,6 +176,31 @@ class EngineerRepository:
         )
         items = (await db.scalars(stmt)).all()
         return int(total or 0), list(items)
+
+    async def get_assignment_assigner_names(
+        self,
+        db: AsyncSession,
+        assignment_ids: list[int],
+    ) -> dict[int, str]:
+        if not assignment_ids:
+            return {}
+
+        stmt = (
+            select(AuditLog.entity_id, User.full_name)
+            .join(User, User.id == AuditLog.user_id)
+            .where(
+                AuditLog.entity_type == "SiteAssignment",
+                AuditLog.action == "MANUAL_ASSIGNMENT",
+                AuditLog.entity_id.in_(assignment_ids),
+            )
+            .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        )
+        rows = (await db.execute(stmt)).all()
+
+        assigner_names: dict[int, str] = {}
+        for entity_id, full_name in rows:
+            assigner_names.setdefault(int(entity_id), full_name)
+        return assigner_names
 
     async def get_engineer_by_user_id(self, db: AsyncSession, user_id: int) -> Engineer | None:
         stmt = select(Engineer).where(Engineer.user_id == user_id)

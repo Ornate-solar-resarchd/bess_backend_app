@@ -47,6 +47,7 @@ class SiteAssignmentRead(BaseModel):
     assigned_stage: BESSStage
     status: AssignmentStatus
     assigned_by: str
+    assigned_by_name: str | None = None
     accepted_at: datetime | None
     completed_at: datetime | None
     notes: str | None
