@@ -1,11 +1,71 @@
 {
   "_meta": {
     "template_name": "Unity Manual Checklist",
-    "template_version": "2026-02-24",
+    "template_version": "2026-03-02",
     "checklist_logo_dark": "docs/assets/unityess-logo-dark.png",
     "checklist_logo_light": "docs/assets/unityess-logo-light.png",
     "brand_logo": "docs/assets/ornate-solar-logo.png"
   },
+  "PRE_DELIVERY": [
+    {
+      "item_text": "Unit serial number and model verified against dispatch order",
+      "description": "Confirm BESS unit serial number, model (UNITYESS-125-261), and rated capacity match the dispatch order and customer purchase order before loading.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Physical exterior inspection completed — no damage, dents, or paint defects",
+      "description": "Inspect all four sides, top, and base of the cabinet. Check for dents, cracks, corrosion, loose panels, and paint damage. Any transit damage must be photographed and reported before dispatch.",
+      "is_mandatory": true,
+      "requires_photo": true
+    },
+    {
+      "item_text": "All cabinet doors open and close smoothly; locks functional",
+      "description": "Operate all cabinet doors (battery section and electrical section). Confirm hinges, door seals, and lock cylinders work correctly. Sealing strip must be intact with no curling or gaps.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "M24 lifting eye bolts installed and secure on top cover",
+      "description": "Verify all four M24 eye bolts are fitted on the top cover lifting points. Confirm bolts are tight and the lifting ring rotates freely. Do not dispatch without lifting bolts — crane loading at site requires them.",
+      "safety_warning": "Overhead lift risk — missing eye bolts prevent safe crane installation",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Battery module ON/OFF knobs in OFF (vertical) position and secured",
+      "description": "Confirm all high-voltage box ON/OFF knobs are in the OFF/vertical position and main circuit breaker (250A/DC1500V) is open. Battery cluster must be de-energised for safe road transport.",
+      "safety_warning": "Electrocution risk — do not dispatch with battery live",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Packing accessories checklist verified (installation components in box)",
+      "description": "Verify that installation accessories box inside the unit contains: M24 eye bolts (if removable), M16 expansion anchor bolts, M5 top cover screws, sealing plates, and any supplied cable lugs.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Factory test report and FAT certificate included with unit",
+      "description": "Confirm FAT report, cell traceability certificate, BMS calibration record, and factory charge-discharge test data are filed with the unit documentation and will travel with the unit to site.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Unit loaded correctly: forklift forks under base, centre of gravity centred",
+      "description": "Forklift forks must engage fully under the base pallet. Centre of gravity must be centred (not offset). Crane lifting: slings on all four M24 eye bolts, centred. Tilting or off-centre lift is prohibited.",
+      "safety_warning": "Tip-over risk during loading — 2600 kg unit",
+      "is_mandatory": true,
+      "requires_photo": true
+    },
+    {
+      "item_text": "Unit secured on truck with anti-tilt straps and transit blocks",
+      "description": "Confirm unit is braced with at least four tie-down straps and front/rear transit blocks on the truck bed. Unit must not move during transport. Roads with vibration, potholes, or grades >15% require special securing.",
+      "safety_warning": "Road transport risk — unsecured unit causes accident",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
   "SITE_ARRIVED": [
     {
       "item_text": "Inspect unit for physical damage",
@@ -22,6 +82,114 @@
     {
       "item_text": "Confirm correct unit delivered to correct site",
       "description": "Cross-check project/site code and customer order details.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Access road confirmed minimum 4m wide for container delivery",
+      "description": "Verify road width is adequate for 20ft container truck and forklift/crane movement to the plinth location.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Crane or forklift (minimum 4 tonne capacity) arranged on site",
+      "description": "Confirm lifting equipment is present and rated for the cabinet weight (2600 kg ±100 kg). Crane lifting capacity must be ≥3 tonnes with ≥2m working radius.",
+      "safety_warning": "Overhead lift risk",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Full PPE kit confirmed present on site",
+      "description": "Verify availability of: safety gloves, protective goggles, dust mask, safety shoes, high-visibility vest, safety helmet, and first-aid kit for all personnel.",
+      "safety_warning": "Personnel protection required throughout",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Required installation tools confirmed on site",
+      "description": "Verify presence of: torque wrench (0–200 Nm), digital multimeter (CAT IV, ≥1500V DC), spirit/bubble level, hydraulic crimping tool, phase sequence tester, earth megger, and insulated screwdrivers.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Electrical permit-to-work (PTW) system in place",
+      "description": "Confirm site PTW procedure is active and all live-work authorisations are documented before any electrical activities commence.",
+      "safety_warning": "Electrocution risk without PTW",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "DISCOM no-objection / grid connectivity approval obtained",
+      "description": "Confirm written approval from local DISCOM for grid connection of the BESS system is in hand before energisation.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Site layout drawing with cable routes shared with Ornate Solar",
+      "description": "Ensure approved site layout showing BESS plinth position, LT panel location, cable trench routes, and earthing electrode positions has been submitted and acknowledged.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Emergency contact list prepared and communicated",
+      "description": "Confirm site electrician, DISCOM emergency number, and local fire department contact list is prepared, printed, and posted at the BESS location.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "PRE_INSTALLATION": [
+    {
+      "item_text": "Site readiness inspection completed before installation begins",
+      "description": "Before any civil or electrical work starts, verify the site meets all installation prerequisites. Do not proceed to CIVIL_INSTALLATION if any item below fails — resolve and re-inspect.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Concrete plinth dimensions and level verified",
+      "description": "Measure plinth: minimum 1520mm × 1270mm footprint, height ≥200mm above finished ground. Surface flatness within ±3mm tolerance. Confirm plinth is cured minimum 10 days (M30 concrete per IS:456).",
+      "is_mandatory": true,
+      "requires_photo": true
+    },
+    {
+      "item_text": "M16 anchor bolt positions correct and projection 100mm above plinth surface",
+      "description": "Verify 4 × M16 anchor bolts are cast-in at correct PCD matching cabinet base plate holes. Projection 100mm above plinth surface. Anchor bolt positions must match Installation Foundation Drawing.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Cable trench route, depth, and conduit installations verified",
+      "description": "Confirm trench depth ≥750mm, width appropriate for cable quantity. GI conduit (40mm dia) installed at road crossings. Both ends of all conduit temporarily sealed. No water or debris in trench.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Earthing system installed and earth resistance ≤1Ω measured",
+      "description": "Earthing electrodes installed per IS:3043. Measured earth resistance must be ≤1Ω with Fluke 1625 or equivalent 3-terminal earth tester. Record date and measurement value before proceeding.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "LT panel BESS feeder MCCB installed and confirmed de-energised",
+      "description": "BESS AC MCCB (250A, 4P, ≥25 kA Icu) installed in LT panel. MCCB in OFF position, padlocked with Danger tag. AC feeder cable NOT yet pulled through trench.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Minimum clearance zones confirmed clear of obstructions",
+      "description": "Verify: front clearance ≥2000mm, side clearance ≥1200mm on long sides, rear clearance ≥1200mm. No permanent structures, plants, or storage within these zones. Confirm with tape measure.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Safe work area demarcated with red construction markers and warning boards",
+      "description": "Mark the safe area with red construction barrier rope and hang safety warning board (\"Danger — Electrical Work in Progress\") at prominent entry point. Remove all obstacles within the work zone.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "All personnel briefed on site safety rules and PTW conditions",
+      "description": "Confirm all installation personnel have been briefed on permit-to-work conditions, emergency procedures, evacuation assembly point, and site-specific hazards (electrical, height, confined space as applicable).",
+      "safety_warning": "Electrocution and crush risk — no briefing = no work",
       "is_mandatory": true,
       "requires_photo": false
     }
@@ -68,6 +236,48 @@
       "description": "Capture cabinet placement proof photo after alignment and anchoring.",
       "is_mandatory": true,
       "requires_photo": true
+    },
+    {
+      "item_text": "Plinth cured minimum 10 days; surface flatness within 3mm tolerance confirmed",
+      "description": "Concrete plinth must achieve full compressive strength (M30 grade, ≥30 MPa at 28 days, IS:516). Surface must be flat within 3mm tolerance before cabinet is placed. Do not install on uncured plinth.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Plinth height minimum 200mm above finished ground level confirmed",
+      "description": "Plinth elevation prevents rainwater ingress to the cabinet base and allows underside inspection. AC cable outlet must be provided in the plinth as per SRD.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Minimum 1200mm side clearance and 2000mm front clearance confirmed",
+      "description": "Per installation manual (GBS1048-2014): maintain ≥1200mm on long sides and ≥2000mm on the front face for maintenance access and heat exchanger airflow. 2m on front/back, 30cm on sides as minimum.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "AC/DC cable trench prepared to minimum 750mm depth",
+      "description": "Cable trench must be minimum 750mm deep from finished ground level to top of cable. GI conduit used at road crossings. Embedded conduit ends temporarily sealed during construction.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Earthing electrodes installed and earth resistance ≤1Ω verified",
+      "description": "Minimum 2 × GI pipe electrodes (40mm dia × 3m deep) installed at ≥6m separation per IS:3043. Earth resistance measured with 3-terminal earth tester and confirmed ≤1Ω before any energisation.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Main earth busbar (MEB) installed and BESS cabinet earthed",
+      "description": "MEB installed inside LT panel. BESS cabinet connected to MEB via 10×70mm GI/copper conductor (IS:3043). No joints in earthing conductor. Bonded back to site main earth bus.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Lifting rings removed and M5 top cover screws installed",
+      "description": "After cabinet is secured on foundation, remove M24 lifting eye bolts from roof and replace with M5 screws at 2.5 N·m torque to seal lifting holes. Base front/rear/left/right sealing plates fitted.",
+      "is_mandatory": true,
+      "requires_photo": false
     }
   ],
   "DC_INSTALLATION": [
@@ -112,6 +322,33 @@
     {
       "item_text": "BMU boards not touched bare-handed",
       "description": "Avoid direct contact with BMU circuitry and connectors.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "High-voltage box (HVB) power switch confirmed OFF before any DC connection",
+      "description": "Confirm the HVB ON/OFF knob is in the vertical (OFF) position and battery cluster circuit breaker (250A/DC1500V) is open before touching any DC wiring. Lock out the switch.",
+      "safety_warning": "Electrocution risk — DC voltages up to 949V",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Protective grounding wire connected to main earth busbar at specified torque",
+      "description": "Connect 25mm²–50mm² single-core outdoor copper cable from external grounding point on cabinet to site MEB. Use M8 OT/DT ring terminals. Tighten M8×30 hexagon head grounding screw to 22 N·m ±10% per IEC 60364-5-54.",
+      "safety_warning": "Electrocution risk if earth is absent",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Insulation resistance test (IR ≥100 MΩ at 1 kV DC) passed on all DC cables",
+      "description": "Use digital megger (1kV/5kV, auto-discharge) to test all DC cables before energisation. Record values. IR must be ≥100 MΩ. Cables failing test must not be energised.",
+      "safety_warning": "Energisation of failed cables causes arc/fire risk",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Liquid cooling pipework connected; no leaks; coolant level correct",
+      "description": "All liquid cooling hose connections inside cabinet verified tight. System filled with 50% aqueous ethylene glycol solution. No drips or seepage at any joint. Confirm by visual inspection before energisation.",
       "is_mandatory": true,
       "requires_photo": false
     }
@@ -165,6 +402,108 @@
       "description": "Maintain routing separation and reduce interference.",
       "is_mandatory": true,
       "requires_photo": false
+    },
+    {
+      "item_text": "AC cable spec verified: 4-core 50~70mm² XLPE with M8 OT/DT crimp terminals",
+      "description": "BESS feeder cable must be 3.5C × 95mm² XLPE armoured (IS:7098-2) or 4-core 50~70mm² as per design. OT/DT terminals correctly sized, crimped with hydraulic tool, covered with heat-shrink. Armour clamped at both cable gland ends.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Busbar bolt torques applied and torque-verified nuts marked",
+      "description": "M12 busbar bolts tightened to 76 N·m; M8 bolts to 21 N·m. Torque wrench calibrated to 76 N·m. After verification, mark each nut with marker pen. OT terminals fully seated against copper busbar with AC cables oriented vertically downward.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "N-wire (neutral) connection verified secure",
+      "description": "Confirm N-wire terminal is tight and connection is secure. A loose neutral causes severe voltage imbalance and AC equipment damage inside the BESS. Check both LT panel end and MCCB terminal.",
+      "safety_warning": "Loose N-wire causes equipment damage",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Insulation resistance test (IR ≥100 MΩ at 1 kV) passed on BESS feeder cable",
+      "description": "Test each phase-to-earth and phase-to-phase on the BESS feeder cable with 1kV megger before energisation. Record all values. All readings must exceed 100 MΩ.",
+      "safety_warning": "Do not energise cable if IR test fails",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "RS485 shielded communication cable pulled from LT panel to BESS plinth",
+      "description": "Shielded 2C × 1.5mm² twisted pair (Belden 9842 or equivalent, EIA-485) run from LT panel / energy meter RS485 port to BESS plinth. Shield earthed at control panel end only to avoid ground loops.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Ethernet CAT6 or optical fibre cable pulled from site LAN switch to BESS plinth",
+      "description": "CAT6 FTP (shielded) or optical fibre run from site LAN switch to BESS EMS LAN2 port for SCADA/EMS communication. Use optical fibre if environment is electrically noisy.",
+      "is_mandatory": true,
+      "requires_photo": false
+    }
+  ],
+  "POST_INSTALLATION": [
+    {
+      "item_text": "Complete visual inspection of all DC and AC wiring inside cabinet",
+      "description": "Open both cabinet sections (battery/electrical). Inspect all DC busbars, cable routing, terminations, and lug crimps. Confirm no bare conductors exposed, no crossing of DC and AC cables, no mechanical stress on any cable.",
+      "is_mandatory": true,
+      "requires_photo": true
+    },
+    {
+      "item_text": "All cable entry/exit points sealed with fire-resistant compound",
+      "description": "Confirm each cable gland and conduit entry into the cabinet is sealed with approved fire-resistant sealing compound or cable gland with seal. No open holes remain. Rodent access prevention confirmed.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "All cabinet bolts and fasteners torque-verified and marked",
+      "description": "Re-verify torques on: M16 anchor bolts (foundation), M12 busbar bolts (76 N·m), M8 earthing screw (22 N·m), M8 AC busbar bolts (21 N·m). Torque-verified fasteners marked with blue (installer) and red (inspector) pen.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Cabinet doors close and seal correctly; no door-cable interference",
+      "description": "Close all cabinet doors and confirm sealing strips compress evenly. No cables pinched or routed near door frame. Padlock tested — opens and closes smoothly. Door lock cylinder lubricated if needed.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Insulation resistance test (IR ≥100 MΩ at 1 kV) passed for all circuits",
+      "description": "Final IR test covering: DC bus cables, AC feeder cable, grounding conductor continuity. Log all readings with date, ambient temperature, and megger serial number. All readings must pass before proceeding to PRE_COMMISSION.",
+      "safety_warning": "Failed IR test means energisation is forbidden",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Earth continuity verified: cabinet frame to MEB resistance <0.1Ω",
+      "description": "Measure earth continuity between cabinet earth stud and main earthing bar (MEB) with milliohm meter or 4-wire resistance test. Result must be <0.1Ω. Record measurement.",
+      "safety_warning": "Electrocution risk without verified earth continuity",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "No tools, cable off-cuts, or debris left inside cabinet",
+      "description": "Perform final internal sweep of all compartments: battery section, HVB section, electrical/PCS section. Use torch to check corners. Remove all tools, wire off-cuts, fasteners, and packaging material.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Liquid cooling system pressure-tested; no leaks at any joint",
+      "description": "Confirm internal liquid cooling circuit has been pressure-tested at 1.5× operating pressure or visual leak test performed. No drips or seepage at any hose fitting or manifold junction. Coolant reservoir level correct.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Communication cables (RS485, Ethernet) routed, terminated, and labelled",
+      "description": "Confirm RS485 shielded cable and CAT6/fibre are fully pulled from LT panel to BESS EMS ports, terminated at both ends, and cable-tied neatly. Each cable labelled with origin, destination, and date. Shield earthed at one end only.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Post-installation photo set captured (all four sides, all open compartments)",
+      "description": "Capture minimum 8 photos: front, rear, left side, right side, battery compartment interior, electrical compartment interior, grounding connection, and AC busbar terminations. Upload to project record.",
+      "is_mandatory": true,
+      "requires_photo": true
     }
   ],
   "PRE_COMMISSION": [
@@ -208,6 +547,38 @@
     {
       "item_text": "\"Do Not Close\" warning signs on all switches",
       "description": "Temporary lockout warning during commissioning.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Emergency shutdown button confirmed released (not engaged)",
+      "description": "Before power-on, verify the red emergency stop button on the cabinet front is in the released (pulled-out) position. A pressed or latched e-stop will prevent system start.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "All protective covers inside cabinet confirmed firmly installed",
+      "description": "Verify all internal protective panels, DC covers, and high-voltage compartment guards are seated and secured. Do not power on with any cover removed.",
+      "safety_warning": "Electrocution risk from exposed live parts",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "No tools or foreign objects left inside cabinet",
+      "description": "Perform a final walk-through of all open compartments (electrical section, battery section, HVB area) and confirm no tools, fasteners, or debris remain before closing doors.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "No ground fault detected on DC or AC circuits",
+      "description": "Verify insulation integrity with megger on both DC (≥100 MΩ at 1 kV) and AC circuits before energisation. EMS insulation monitoring must show no fault on its display.",
+      "safety_warning": "Ground fault before energisation causes arc flash",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Broadband or 4G SIM data plan active at site for SCADA/EMS connectivity",
+      "description": "Confirm internet access is live at the BESS location. Static IP address provisioned and communicated to Ornate Solar. EMS LAN2 port connected to site switch or 4G router.",
       "is_mandatory": true,
       "requires_photo": false
     }
@@ -254,6 +625,32 @@
       "description": "Verify no active alarms before hot commissioning.",
       "is_mandatory": true,
       "requires_photo": false
+    },
+    {
+      "item_text": "All miniature circuit breakers (QF2–QF6) switched to ON (handle upward)",
+      "description": "After MCCB2 auxiliary power is confirmed live, switch all MCBs (QF2, QF3, QF4, QF5, QF6) inside the electrical compartment to the ON position (handle facing upward). Verify multimeter reading 230V line-to-neutral at each breaker output.",
+      "safety_warning": "Electrocution risk — confirm MCCB1 is still OFF",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "MCCB1 (main AC grid breaker) turned ON; grid voltage confirmed at PCS input",
+      "description": "After auxiliary power startup is complete, turn MCCB1 to ON position to close AC grid connection. Verify with multimeter: 400V between phases (A-B, B-C, C-A) and 230V phase-to-neutral at PCS AC input terminals.",
+      "safety_warning": "Electrocution risk — ensure all DC connections are secure before closing MCCB1",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Liquid cooling unit operating; no coolant temperature alarms in EMS",
+      "description": "Confirm liquid cooling unit starts automatically after system energisation. Check EMS dashboard for coolant temperature readings. Outlet water temperature must be within operating range. No cooling alarms present.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "BMS communication verified: all 5 battery packs visible in EMS with SOC data",
+      "description": "In EMS web interface, confirm BMS communication on RS485-2 is active. All 5 battery pack BMUs visible with cell voltage, temperature, and SOC readings. No BMS communication lost alarm.",
+      "is_mandatory": true,
+      "requires_photo": false
     }
   ],
   "HOT_COMMISSION": [
@@ -284,6 +681,44 @@
     {
       "item_text": "Performance test completed and result logged",
       "description": "Enter measured KPIs and final test outcome.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "EMS communication verified: BMS on RS485-2, PCS on RS485-1, all data streams active",
+      "description": "In EMS web interface, confirm PCS (RS485-1), BMS (RS485-2), dehumidifier (RS485-3), and liquid-cooled unit (RS485-4) all show live data. No communication lost alarm on any subsystem.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "SCADA connection verified: EMS, BMS, and PCS data visible on SCADA dashboard",
+      "description": "Confirm SCADA/CMS platform (Modbus TCP / RS485 / Ethernet) receives live data from the BESS EMS. Key parameters visible: SOC, power, voltage, temperature, alarm status. Ornate Solar cloud platform login confirmed.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Liquid cooling unit healthy: outlet temperature normal, no overtemperature alarm",
+      "description": "During hot commissioning, confirm liquid-cooled unit maintains battery temperature within operating range (0°C–55°C charge, -30°C–55°C discharge). No overtemperature Level 1/2/3 alarm active in EMS.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Emergency stop button function tested and reset confirmed",
+      "description": "Press the red emergency stop button and verify system trips (PCS stops, BMS contactor opens). Release button by rotating/pulling, then confirm system can be restarted normally via EMS. Document test result.",
+      "safety_warning": "Coordinate with site operator before e-stop test",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Fire suppression aerosol module status confirmed normal",
+      "description": "Check aerosol fire suppression module inside cabinet. No pre-discharge indicator visible. CAN1 fire communication query shows no alarm in EMS. If aerosol module indicator is abnormal, contact Ornate Solar before proceeding.",
+      "safety_warning": "Fire risk — do not open cabinet door if fire alarm is active",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "PCS rated power output confirmed at 125 kW during load test",
+      "description": "Set PCS power command via EMS to rated value (125 kW discharge). Verify actual output power on EMS dashboard and energy meter. Confirm stable operation for minimum 5 minutes with no trips or alarms.",
       "is_mandatory": true,
       "requires_photo": false
     }
@@ -318,6 +753,30 @@
       "description": "Store final site photo package.",
       "is_mandatory": true,
       "requires_photo": true
+    },
+    {
+      "item_text": "O&M manual and warranty certificate handed over to customer",
+      "description": "Provide physical or digital copy of the UnityESS 261kWh User Manual, warranty terms, and commissioning report to the customer representative. Obtain acknowledgement of receipt.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Customer trained on EMS web interface, power-on/off, and emergency shutdown",
+      "description": "Walk customer through: EMS web interface navigation, normal power-on sequence (MCCB2 → AC output button → UPS → MCCB1 → EMS), normal power-off sequence (PCS to 0 via EMS → MCCB1 OFF → MCCB2 OFF), and emergency stop procedure.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "DISCOM grid approval and as-built drawings filed in project records",
+      "description": "Ensure DISCOM no-objection certificate, final as-built cable route drawing (with cable sizes, trench depth, earthing electrode positions), and single-line diagram are filed in the project folder and a copy given to the customer.",
+      "is_mandatory": true,
+      "requires_photo": false
+    },
+    {
+      "item_text": "Emergency contact list documented and posted at BESS site",
+      "description": "Confirm final emergency contact list (site electrician, DISCOM 24hr line, local fire station, Ornate Solar after-sales) is printed, laminated, and physically posted adjacent to the BESS cabinet.",
+      "is_mandatory": true,
+      "requires_photo": false
     }
   ]
 }
