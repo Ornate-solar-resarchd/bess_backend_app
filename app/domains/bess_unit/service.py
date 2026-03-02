@@ -4,7 +4,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.security import create_scoped_token, decode_token
 from app.domains.auth.models import User
 from app.domains.bess_unit.models import AuditLog, BESSUnit, StageCertificate, StageHistory
 from app.domains.bess_unit.repository import bess_repository
@@ -106,7 +107,31 @@ def _mask_phone(phone: str | None) -> str | None:
     return f"{'*' * max(0, len(phone) - 4)}{phone[-4:]}"
 
 
-def _ensure_qr_file(serial_number: str) -> tuple[str, Path]:
+def _build_scan_url(serial_number: str) -> str:
+    if settings.qr_code_base_url.rstrip("/").endswith("/api/v1/bess/scan"):
+        return f"{settings.qr_code_base_url.rstrip('/')}/{serial_number}"
+    return f"{settings.qr_code_base_url.rstrip('/')}/api/v1/bess/scan/{serial_number}"
+
+
+def _build_public_scan_url(bess_unit_id: int) -> str:
+    token = create_scoped_token(
+        subject={"scope": "bess_public_scan", "bess_unit_id": bess_unit_id},
+        expires_delta=timedelta(days=30),
+        token_type="bess_public_scan",
+    )
+    return f"{settings.qr_code_base_url.rstrip('/')}{settings.api_v1_prefix}/bess/{bess_unit_id}/public-scan?token={token}"
+
+
+def _is_bess_profile_complete(unit: BESSUnit) -> bool:
+    return bool(
+        unit.site_address
+        and unit.site_latitude is not None
+        and unit.site_longitude is not None
+        and unit.customer_user_id is not None
+    )
+
+
+def _ensure_qr_file(serial_number: str, encoded_url: str | None = None) -> tuple[str, Path]:
     media_root = Path(settings.media_root)
     qr_dir = media_root / "qr"
     qr_dir.mkdir(parents=True, exist_ok=True)
@@ -115,14 +140,38 @@ def _ensure_qr_file(serial_number: str) -> tuple[str, Path]:
     file_path = qr_dir / file_name
     public_url = f"/media/qr/{file_name}"
 
-    if settings.qr_code_base_url.rstrip("/").endswith("/api/v1/bess/scan"):
-        encoded_url = f"{settings.qr_code_base_url.rstrip('/')}/{serial_number}"
-    else:
-        encoded_url = f"{settings.qr_code_base_url.rstrip('/')}/api/v1/bess/scan/{serial_number}"
+    qr_data = encoded_url or _build_scan_url(serial_number)
 
-    img = qrcode.make(encoded_url)
+    img = qrcode.make(qr_data)
     img.save(file_path)
     return public_url, file_path
+
+
+def _resolve_qr_target_for_unit(unit: BESSUnit) -> str:
+    if _is_bess_profile_complete(unit):
+        return _build_public_scan_url(unit.id)
+    return _build_scan_url(unit.serial_number)
+
+
+def _build_bess_qr_payload(unit: BESSUnit, model: ProductModel | None) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "document_type": "BESS_UNIT_QR",
+        "version": "1.0",
+        "bess_unit_id": unit.id,
+        "serial_number": unit.serial_number,
+        "model_number": model.model_number if model else None,
+        "model_capacity_kwh": model.capacity_kwh if model else None,
+        "current_stage": unit.current_stage.value,
+        "scan_url": _build_scan_url(unit.serial_number),
+        "public_scan_url": _resolve_qr_target_for_unit(unit),
+    }
+    if unit.manufactured_date is not None:
+        payload["manufactured_date"] = unit.manufactured_date.isoformat()
+    return payload
+
+
+def _encode_qr_payload(payload: dict[str, object]) -> str:
+    return json.dumps(payload, separators=(",", ":"), ensure_ascii=True, sort_keys=True)
 
 
 def _save_uploaded_nameplate_photo(photo: UploadFile, content: bytes) -> str:
@@ -530,11 +579,7 @@ async def create_bess_unit(db: AsyncSession, payload: BESSUnitCreate, current_us
     if existing is not None:
         raise APIConflictException(f"BESS unit with serial '{serial_number}' already exists")
 
-    qr_code_url: str | None
-    if payload.regenerate_qr_png:
-        qr_code_url, _ = _ensure_qr_file(serial_number)
-    else:
-        qr_code_url = payload.existing_qr_code_url
+    qr_code_url: str | None = payload.existing_qr_code_url
 
     async with atomic(db) as session:
         unit = BESSUnit(
@@ -554,6 +599,11 @@ async def create_bess_unit(db: AsyncSession, payload: BESSUnitCreate, current_us
             is_active=False,
         )
         unit = await bess_repository.create(session, unit)
+        if payload.regenerate_qr_png:
+            qr_payload = _build_bess_qr_payload(unit, product_model)
+            qr_code_url, _ = _ensure_qr_file(serial_number, _encode_qr_payload(qr_payload))
+            unit.qr_code_url = qr_code_url
+            await session.flush()
 
         await bess_repository.create_audit_log(
             session,
@@ -585,6 +635,10 @@ async def update_bess_unit(
     async with atomic(db) as session:
         for key, value in changes.items():
             setattr(unit, key, value)
+        model = await session.get(ProductModel, unit.product_model_id)
+        qr_payload = _build_bess_qr_payload(unit, model)
+        qr_code_url, _ = _ensure_qr_file(unit.serial_number, _encode_qr_payload(qr_payload))
+        unit.qr_code_url = qr_code_url
         unit.updated_at = datetime.now(UTC)
         await session.flush()
         await bess_repository.create_audit_log(
@@ -696,6 +750,10 @@ async def transition_stage(
         unit.current_stage = to_stage
         if to_stage == BESSStage.ACTIVE:
             unit.is_active = True
+        model = await session.get(ProductModel, unit.product_model_id)
+        qr_payload = _build_bess_qr_payload(unit, model)
+        qr_code_url, _ = _ensure_qr_file(unit.serial_number, _encode_qr_payload(qr_payload))
+        unit.qr_code_url = qr_code_url
         await session.flush()
 
         await bess_repository.create_stage_history(
@@ -833,6 +891,10 @@ async def scan_by_serial(db: AsyncSession, serial_number: str) -> ScanResponse:
     if unit is None:
         raise APINotFoundException("BESS unit not found")
 
+    return await _build_scan_response(db, unit)
+
+
+async def _build_scan_response(db: AsyncSession, unit: BESSUnit) -> ScanResponse:
     assigned_engineer = await checklist_repository.get_current_stage_engineer(db, unit.id, unit.current_stage)
     checklist = await checklist_repository.get_stage_checklist(db, unit.id, unit.current_stage)
 
@@ -856,3 +918,26 @@ async def scan_by_serial(db: AsyncSession, serial_number: str) -> ScanResponse:
         ],
         stage_instructions=STAGE_INSTRUCTIONS.get(unit.current_stage, "Follow standard operating procedure for this stage."),
     )
+
+
+async def get_public_scan_by_token(
+    db: AsyncSession,
+    bess_unit_id: int,
+    token: str,
+) -> ScanResponse:
+    try:
+        payload = decode_token(token)
+    except ValueError as exc:
+        raise APIValidationException("Invalid BESS public scan token") from exc
+
+    if payload.get("type") != "bess_public_scan" or payload.get("scope") != "bess_public_scan":
+        raise APIValidationException("Invalid BESS public scan token")
+
+    token_bess_unit_id = payload.get("bess_unit_id")
+    if token_bess_unit_id is None or int(token_bess_unit_id) != bess_unit_id:
+        raise APIValidationException("Invalid BESS public scan token")
+
+    unit = await bess_repository.get_by_id(db, bess_unit_id)
+    if unit is None or unit.is_deleted:
+        raise BESSNotFoundException(bess_unit_id)
+    return await _build_scan_response(db, unit)

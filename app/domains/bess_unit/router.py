@@ -177,6 +177,15 @@ async def scan(serial_number: str, db: AsyncSession = Depends(get_db)) -> ScanRe
     return await service.scan_by_serial(db, serial_number)
 
 
+@router.get("/{bess_unit_id}/public-scan", response_model=ScanResponse)
+async def public_scan(
+    bess_unit_id: int,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> ScanResponse:
+    return await service.get_public_scan_by_token(db, bess_unit_id, token)
+
+
 @router.get("/{bess_unit_id}/qrcode", response_class=FileResponse)
 async def get_qrcode(
     bess_unit_id: int,

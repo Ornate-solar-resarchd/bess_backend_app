@@ -42,6 +42,10 @@ def create_refresh_token(subject: dict[str, object]) -> str:
     )
 
 
+def create_scoped_token(subject: dict[str, object], expires_delta: timedelta, token_type: str) -> str:
+    return _create_token(subject=subject, expires_delta=expires_delta, token_type=token_type)
+
+
 def decode_token(token: str) -> dict[str, object]:
     try:
         return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])

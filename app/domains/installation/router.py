@@ -17,6 +17,7 @@ from app.domains.installation.service import (
     export_checklist_pdf,
     export_handover_pdf,
     get_handover_document_data,
+    get_handover_document_data_by_qr_token,
     get_stage_checklist,
     update_checklist_item,
     validate_stage_checklist,
@@ -130,3 +131,12 @@ async def handover_document_data(
     _: User = Depends(require_permission("checklist:read")),
 ) -> HandoverDocumentDataRead:
     return await get_handover_document_data(db, bess_unit_id)
+
+
+@router.get("/{bess_unit_id}/handover-document/public-data", response_model=HandoverDocumentDataRead)
+async def handover_document_public_data(
+    bess_unit_id: int,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> HandoverDocumentDataRead:
+    return await get_handover_document_data_by_qr_token(db, bess_unit_id, token)

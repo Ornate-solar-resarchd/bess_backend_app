@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import textwrap
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +13,7 @@ from qrcode.exceptions import DataOverflowError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.security import create_scoped_token, decode_token
 from app.domains.auth.models import User
 from app.domains.bess_unit.models import AuditLog
 from app.domains.bess_unit.repository import bess_repository
@@ -341,6 +342,16 @@ def _build_handover_qr_payload(
 
 def _encode_qr_payload(payload: dict[str, object]) -> str:
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=True, sort_keys=True, default=_json_safe_value)
+
+
+def _build_handover_qr_scan_url(bess_unit_id: int) -> str:
+    token = create_scoped_token(
+        subject={"scope": "handover_qr", "bess_unit_id": bess_unit_id},
+        expires_delta=timedelta(days=30),
+        token_type="handover_qr",
+    )
+    base_url = settings.qr_code_base_url.rstrip("/")
+    return f"{base_url}{settings.api_v1_prefix}/bess/{bess_unit_id}/handover-document/public-data?token={token}"
 
 
 def _generate_handover_qr(payload: dict[str, object]) -> tuple[Image.Image, dict[str, object]]:
@@ -844,6 +855,7 @@ async def get_handover_document_data(db: AsyncSession, bess_unit_id: int) -> Han
     city = getattr(unit, "city", None)
     warehouse = getattr(unit, "warehouse", None)
     generated_at = datetime.now(UTC)
+    qr_scan_url = _build_handover_qr_scan_url(bess_unit_id)
     qr_payload = _build_handover_qr_payload(
         generated_at=generated_at.isoformat(),
         unit=unit,
@@ -858,6 +870,7 @@ async def get_handover_document_data(db: AsyncSession, bess_unit_id: int) -> Han
         customer_signature_item=customer_signature_item,
         stage_items=stage_items,
     )
+    qr_payload["scan_url"] = qr_scan_url
     _, qr_payload_used = _generate_handover_qr(qr_payload)
 
     return HandoverDocumentDataRead(
@@ -904,7 +917,28 @@ async def get_handover_document_data(db: AsyncSession, bess_unit_id: int) -> Han
         ],
         stages=stages,
         qr_payload=qr_payload_used,
+        qr_scan_url=qr_scan_url,
     )
+
+
+async def get_handover_document_data_by_qr_token(
+    db: AsyncSession,
+    bess_unit_id: int,
+    token: str,
+) -> HandoverDocumentDataRead:
+    try:
+        payload = decode_token(token)
+    except ValueError as exc:
+        raise APIValidationException("Invalid handover QR token") from exc
+
+    if payload.get("type") != "handover_qr" or payload.get("scope") != "handover_qr":
+        raise APIValidationException("Invalid handover QR token")
+
+    token_bess_unit_id = payload.get("bess_unit_id")
+    if token_bess_unit_id is None or int(token_bess_unit_id) != bess_unit_id:
+        raise APIValidationException("Invalid handover QR token")
+
+    return await get_handover_document_data(db, bess_unit_id)
 
 
 async def ensure_handover_document(db: AsyncSession, bess_unit_id: int) -> str:

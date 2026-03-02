@@ -99,3 +99,4 @@ class HandoverDocumentDataRead(BaseModel):
     signatures: list[HandoverSignatureRead]
     stages: list[HandoverChecklistStageRead]
     qr_payload: dict[str, Any] | None = None
+    qr_scan_url: str | None = None
