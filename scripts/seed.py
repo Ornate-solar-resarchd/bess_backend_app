@@ -21,6 +21,7 @@ from app.shared.enums import Specialization
 PERMISSIONS = [
     "bess:create",
     "bess:read",
+    "bess:delete",
     "bess:transition",
     "checklist:read",
     "checklist:write",

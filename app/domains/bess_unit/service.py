@@ -654,6 +654,26 @@ async def update_bess_unit(
     return unit
 
 
+async def delete_bess_unit(db: AsyncSession, bess_unit_id: int, current_user: User) -> None:
+    unit = await bess_repository.get_by_id(db, bess_unit_id)
+    if unit is None or unit.is_deleted:
+        raise BESSNotFoundException(bess_unit_id)
+
+    async with atomic(db) as session:
+        unit.is_deleted = True
+        await session.flush()
+        await bess_repository.create_audit_log(
+            session,
+            AuditLog(
+                user_id=current_user.id,
+                action="BESS_DELETE",
+                entity_type="BESSUnit",
+                entity_id=bess_unit_id,
+                payload_json={"serial_number": unit.serial_number},
+            ),
+        )
+
+
 async def get_bess_unit(db: AsyncSession, bess_unit_id: int) -> BESSUnit:
     unit = await bess_repository.get_by_id(db, bess_unit_id)
     if unit is None or unit.is_deleted:

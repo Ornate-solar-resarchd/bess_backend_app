@@ -15,6 +15,7 @@ from app.shared.acid import atomic
 PERMISSIONS: Final[list[str]] = [
     "bess:create",
     "bess:read",
+    "bess:delete",
     "bess:transition",
     "checklist:read",
     "checklist:write",
@@ -49,6 +50,9 @@ PERMISSION_TO_ENDPOINTS: Final[dict[str, list[str]]] = {
         "GET /api/v1/bess/{bess_unit_id}/qrcode",
         "GET /api/v1/bess/{bess_unit_id}/history",
         "GET /api/v1/commissioning/{bess_unit_id}/records",
+    ],
+    "bess:delete": [
+        "DELETE /api/v1/bess/{bess_unit_id}",
     ],
     "bess:transition": [
         "PATCH /api/v1/bess/{bess_unit_id}/transition",
