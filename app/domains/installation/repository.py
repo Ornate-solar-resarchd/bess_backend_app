@@ -142,5 +142,13 @@ class ChecklistRepository:
         stmt = select(func.count(ChecklistTemplate.id)).where(ChecklistTemplate.stage == stage)
         return int(await db.scalar(stmt) or 0)
 
+    async def count_completed_for_stage(self, db: AsyncSession, bess_unit_id: int, stage: BESSStage) -> int:
+        stmt = select(func.count(ChecklistResponse.id)).where(
+            ChecklistResponse.bess_unit_id == bess_unit_id,
+            ChecklistResponse.stage == stage,
+            ChecklistResponse.is_checked.is_(True),
+        )
+        return int(await db.scalar(stmt) or 0)
+
 
 checklist_repository = ChecklistRepository()

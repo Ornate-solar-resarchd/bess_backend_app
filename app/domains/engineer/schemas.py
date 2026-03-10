@@ -83,3 +83,63 @@ class PaginatedEngineerCandidateUsers(BaseModel):
     items: list[EngineerCandidateUserRead]
     page: int
     size: int
+
+
+class NestedUserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    email: str
+
+
+class EngineerWithUserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    user: NestedUserRead
+    employee_code: str
+    specialization: Specialization
+    city_id: int
+    country_id: int
+    is_available: bool
+    max_concurrent_assignments: int
+
+
+class ChecklistProgressRead(BaseModel):
+    total: int
+    completed: int
+
+
+class AssignmentWithProgressRead(BaseModel):
+    id: int
+    bess_unit_id: int
+    bess_serial_number: str
+    bess_current_stage: BESSStage
+    assigned_stage: BESSStage
+    status: AssignmentStatus
+    assigned_by: str
+    accepted_at: datetime | None
+    notes: str | None
+    created_at: datetime
+    checklist_progress: ChecklistProgressRead
+
+
+class EngineerDashboardRead(BaseModel):
+    engineer: EngineerWithUserRead
+    active_assignments: list[AssignmentWithProgressRead]
+
+
+class EngineerWorkloadRead(BaseModel):
+    engineer: EngineerWithUserRead
+    active_assignments_count: int
+    is_busy: bool
+    active_assignments: list[AssignmentWithProgressRead]
+
+
+class EngineerOverviewRead(BaseModel):
+    total_engineers: int
+    busy_count: int
+    free_count: int
+    engineers: list[EngineerWorkloadRead]

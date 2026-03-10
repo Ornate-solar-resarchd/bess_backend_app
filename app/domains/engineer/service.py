@@ -5,11 +5,20 @@ from datetime import UTC, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.models import User
-from app.domains.bess_unit.models import AuditLog
+from app.domains.bess_unit.models import AuditLog, BESSUnit
 from app.domains.bess_unit.repository import bess_repository
 from app.domains.engineer.models import Engineer, SiteAssignment
 from app.domains.engineer.repository import ACTIVE_ASSIGNMENT_STATUSES, engineer_repository
-from app.domains.engineer.schemas import EngineerCreate
+from app.domains.engineer.schemas import (
+    AssignmentWithProgressRead,
+    ChecklistProgressRead,
+    EngineerCreate,
+    EngineerDashboardRead,
+    EngineerOverviewRead,
+    EngineerWithUserRead,
+    EngineerWorkloadRead,
+)
+from app.domains.installation.repository import checklist_repository
 from app.shared.acid import atomic
 from app.shared.enums import AssignmentStatus, BESSStage, SITE_STAGES, STAGE_TO_SPECIALIZATION, STAGE_TRANSITIONS, Specialization
 from app.shared.exceptions import APINotFoundException, BESSNotFoundException
@@ -280,3 +289,84 @@ async def complete_assignment(db: AsyncSession, assignment_id: int, current_user
         auto_assign_engineer_task.delay(assignment.bess_unit_id, next_stage.value)
 
     return assignment
+
+
+async def _build_assignment_with_progress(
+    db: AsyncSession,
+    assignment: SiteAssignment,
+) -> AssignmentWithProgressRead | None:
+    bess_unit = await db.get(BESSUnit, assignment.bess_unit_id)
+    if bess_unit is None or bess_unit.is_deleted:
+        return None
+    total = await checklist_repository.checklist_count_for_stage(db, assignment.assigned_stage)
+    completed = await checklist_repository.count_completed_for_stage(db, assignment.bess_unit_id, assignment.assigned_stage)
+    return AssignmentWithProgressRead(
+        id=assignment.id,
+        bess_unit_id=assignment.bess_unit_id,
+        bess_serial_number=bess_unit.serial_number,
+        bess_current_stage=bess_unit.current_stage,
+        assigned_stage=assignment.assigned_stage,
+        status=assignment.status,
+        assigned_by=assignment.assigned_by,
+        accepted_at=assignment.accepted_at,
+        notes=assignment.notes,
+        created_at=assignment.created_at,
+        checklist_progress=ChecklistProgressRead(total=total, completed=completed),
+    )
+
+
+async def get_my_dashboard(db: AsyncSession, current_user: User) -> EngineerDashboardRead:
+    engineer = await engineer_repository.get_engineer_by_user_id(db, current_user.id)
+    if engineer is None:
+        raise APINotFoundException("Engineer profile not found")
+
+    assignments = await engineer_repository.get_active_assignments_for_engineer(db, engineer.id)
+    active_assignments = []
+    for assignment in assignments:
+        item = await _build_assignment_with_progress(db, assignment)
+        if item is not None:
+            active_assignments.append(item)
+
+    return EngineerDashboardRead(
+        engineer=EngineerWithUserRead.model_validate(engineer),
+        active_assignments=active_assignments,
+    )
+
+
+async def get_engineers_overview(db: AsyncSession) -> EngineerOverviewRead:
+    all_engineers = await engineer_repository.get_all_engineers(db)
+
+    engineer_workloads: list[EngineerWorkloadRead] = []
+    busy_count = 0
+    free_count = 0
+
+    for engineer in all_engineers:
+        assignments = await engineer_repository.get_active_assignments_for_engineer(db, engineer.id)
+        active_assignments = []
+        for assignment in assignments:
+            item = await _build_assignment_with_progress(db, assignment)
+            if item is not None:
+                active_assignments.append(item)
+
+        active_count = len(active_assignments)
+        is_busy = not engineer.is_available or active_count > 0
+        if is_busy:
+            busy_count += 1
+        else:
+            free_count += 1
+
+        engineer_workloads.append(
+            EngineerWorkloadRead(
+                engineer=EngineerWithUserRead.model_validate(engineer),
+                active_assignments_count=active_count,
+                is_busy=is_busy,
+                active_assignments=active_assignments,
+            )
+        )
+
+    return EngineerOverviewRead(
+        total_engineers=len(all_engineers),
+        busy_count=busy_count,
+        free_count=free_count,
+        engineers=engineer_workloads,
+    )

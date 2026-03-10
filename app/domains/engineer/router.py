@@ -9,6 +9,8 @@ from app.domains.auth.models import User
 from app.domains.engineer.schemas import (
     EngineerCandidateUserRead,
     EngineerCreate,
+    EngineerDashboardRead,
+    EngineerOverviewRead,
     EngineerRead,
     ManualAssignmentCreate,
     PaginatedAssignments,
@@ -21,6 +23,8 @@ from app.domains.engineer.service import (
     complete_assignment,
     create_engineer,
     decline_assignment,
+    get_engineers_overview,
+    get_my_dashboard,
     list_assignments_for_bess,
     list_available_engineers,
     list_engineer_candidate_users,
@@ -30,6 +34,22 @@ from app.domains.engineer.service import (
 from app.shared.enums import BESSStage
 
 router = APIRouter(tags=["Engineers"])
+
+
+@router.get("/engineers/my-dashboard", response_model=EngineerDashboardRead)
+async def my_dashboard_endpoint(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("engineer:read")),
+) -> EngineerDashboardRead:
+    return await get_my_dashboard(db, current_user)
+
+
+@router.get("/engineers/overview", response_model=EngineerOverviewRead)
+async def engineers_overview_endpoint(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission("engineer:read")),
+) -> EngineerOverviewRead:
+    return await get_engineers_overview(db)
 
 
 @router.post("/engineers/", response_model=EngineerRead, status_code=status.HTTP_201_CREATED)

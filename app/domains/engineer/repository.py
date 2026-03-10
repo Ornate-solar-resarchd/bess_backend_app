@@ -222,5 +222,24 @@ class EngineerRepository:
         )
         return await db.scalar(stmt)
 
+    async def get_active_assignments_for_engineer(
+        self,
+        db: AsyncSession,
+        engineer_id: int,
+    ) -> list[SiteAssignment]:
+        stmt = (
+            select(SiteAssignment)
+            .where(
+                SiteAssignment.engineer_id == engineer_id,
+                SiteAssignment.status.in_(ACTIVE_ASSIGNMENT_STATUSES),
+            )
+            .order_by(SiteAssignment.id.desc())
+        )
+        return list((await db.scalars(stmt)).all())
+
+    async def get_all_engineers(self, db: AsyncSession) -> list[Engineer]:
+        stmt = select(Engineer).order_by(Engineer.id)
+        return list((await db.scalars(stmt)).all())
+
 
 engineer_repository = EngineerRepository()
