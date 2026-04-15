@@ -8,6 +8,7 @@ from sqlalchemy import DateTime
 
 from app.shared.base_model import Base, TimestampMixin
 from app.shared.enums import ShipmentStatus
+from app.domains.master.models import Country, Site, Warehouse
 
 
 class Shipment(Base, TimestampMixin):
@@ -16,9 +17,13 @@ class Shipment(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     shipment_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     origin_country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+    origin_country: Mapped["Country"] = relationship(lazy="selectin", foreign_keys=[origin_country_id])
     destination_country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+    destination_country: Mapped["Country"] = relationship(lazy="selectin", foreign_keys=[destination_country_id])
     warehouse_id: Mapped[int | None] = mapped_column(ForeignKey("warehouses.id"), nullable=True)
+    warehouse: Mapped["Warehouse | None"] = relationship(lazy="selectin")
     site_id: Mapped[int | None] = mapped_column(ForeignKey("sites.id"), nullable=True)
+    site: Mapped["Site | None"] = relationship(lazy="selectin")
     created_date: Mapped[date | None] = mapped_column(nullable=True)
     expected_arrival_date: Mapped[date | None] = mapped_column(nullable=True)
     expected_quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

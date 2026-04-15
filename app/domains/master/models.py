@@ -13,6 +13,9 @@ class Country(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     code: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 class City(Base, TimestampMixin):
     __tablename__ = "cities"
@@ -23,6 +26,9 @@ class City(Base, TimestampMixin):
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
     country: Mapped[Country] = relationship(lazy="selectin")
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 class Warehouse(Base, TimestampMixin):
     __tablename__ = "warehouses"
@@ -32,6 +38,9 @@ class Warehouse(Base, TimestampMixin):
     city_id: Mapped[int] = mapped_column(ForeignKey("cities.id"), nullable=False)
     city: Mapped[City] = relationship(lazy="selectin")
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    def __repr__(self) -> str:
+        return self.name
 
 
 class Site(Base, TimestampMixin):
@@ -47,6 +56,9 @@ class Site(Base, TimestampMixin):
     latitude: Mapped[float | None] = mapped_column(nullable=True)
     longitude: Mapped[float | None] = mapped_column(nullable=True)
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 class ProductModel(Base, TimestampMixin):
     __tablename__ = "product_models"
@@ -55,3 +67,6 @@ class ProductModel(Base, TimestampMixin):
     model_number: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     capacity_kwh: Mapped[float] = mapped_column(nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"{self.model_number} ({self.capacity_kwh} kWh)"

@@ -74,8 +74,9 @@ class UserAdmin(ModelView, model=User):
         User.created_at: "Registered At",
     }
     form_columns = [User.email, User.hashed_password, User.full_name, User.phone, User.is_active, User.is_verified]
-    page_size = 20
-    page_size_options = [20, 50, 100]
+    column_export_list = [User.id, User.email, User.full_name, User.phone, User.is_active, User.is_verified, User.created_at]
+    page_size = 25
+    page_size_options = [25, 50, 100]
 
     async def on_model_change(self, data: dict, model: User, is_created: bool, request: Request) -> None:
         _ = (model, is_created, request)
@@ -99,7 +100,7 @@ class RoleAdmin(ModelView, model=Role):
         Role.description: "Description",
         Role.created_at: "Created At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class PermissionAdmin(ModelView, model=Permission):
@@ -117,7 +118,7 @@ class PermissionAdmin(ModelView, model=Permission):
         Permission.description: "Description",
         Permission.created_at: "Created At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class UserRoleAdmin(ModelView, model=UserRole):
@@ -135,7 +136,7 @@ class UserRoleAdmin(ModelView, model=UserRole):
         UserRole.assigned_at: "Assigned At",
         UserRole.assigned_by_user_id: "Assigned By",
     }
-    page_size = 20
+    page_size = 25
 
 
 class RolePermissionAdmin(ModelView, model=RolePermission):
@@ -149,7 +150,7 @@ class RolePermissionAdmin(ModelView, model=RolePermission):
         RolePermission.role_id: "Role ID",
         RolePermission.permission_id: "Permission ID",
     }
-    page_size = 20
+    page_size = 25
 
 
 # ─── Master Data ──────────────────────────────────────────────────────────────
@@ -169,7 +170,7 @@ class CountryAdmin(ModelView, model=Country):
         Country.code: "ISO Code",
         Country.created_at: "Created At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class CityAdmin(ModelView, model=City):
@@ -178,16 +179,16 @@ class CityAdmin(ModelView, model=City):
     icon = "fa-solid fa-city"
     category = "Master Data"
 
-    column_list = [City.id, City.name, City.country_id, City.created_at]
+    column_list = [City.id, City.name, "country", City.created_at]
     column_searchable_list = [City.name]
     column_sortable_list = [City.id, City.name, City.created_at]
     column_labels = {
         City.id: "ID",
         City.name: "City Name",
-        City.country_id: "Country ID",
+        "country": "Country",
         City.created_at: "Created At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class WarehouseAdmin(ModelView, model=Warehouse):
@@ -196,17 +197,17 @@ class WarehouseAdmin(ModelView, model=Warehouse):
     icon = "fa-solid fa-warehouse"
     category = "Master Data"
 
-    column_list = [Warehouse.id, Warehouse.name, Warehouse.city_id, Warehouse.address, Warehouse.created_at]
+    column_list = [Warehouse.id, Warehouse.name, "city", Warehouse.address, Warehouse.created_at]
     column_searchable_list = [Warehouse.name, Warehouse.address]
     column_sortable_list = [Warehouse.id, Warehouse.name, Warehouse.created_at]
     column_labels = {
         Warehouse.id: "ID",
         Warehouse.name: "Warehouse Name",
-        Warehouse.city_id: "City ID",
+        "city": "City",
         Warehouse.address: "Address",
         Warehouse.created_at: "Created At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class SiteAdmin(ModelView, model=Site):
@@ -215,20 +216,20 @@ class SiteAdmin(ModelView, model=Site):
     icon = "fa-solid fa-location-dot"
     category = "Master Data"
 
-    column_list = [Site.id, Site.name, Site.country_id, Site.city_id, Site.address, Site.latitude, Site.longitude, Site.created_at]
+    column_list = [Site.id, Site.name, "country", "city", Site.address, Site.latitude, Site.longitude, Site.created_at]
     column_searchable_list = [Site.name, Site.address]
     column_sortable_list = [Site.id, Site.name, Site.created_at]
     column_labels = {
         Site.id: "ID",
         Site.name: "Site Name",
-        Site.country_id: "Country ID",
-        Site.city_id: "City ID",
+        "country": "Country",
+        "city": "City",
         Site.address: "Address",
-        Site.latitude: "Latitude",
-        Site.longitude: "Longitude",
+        Site.latitude: "Lat",
+        Site.longitude: "Lng",
         Site.created_at: "Created At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class ProductModelAdmin(ModelView, model=ProductModel):
@@ -247,7 +248,7 @@ class ProductModelAdmin(ModelView, model=ProductModel):
         ProductModel.description: "Description",
         ProductModel.created_at: "Created At",
     }
-    page_size = 20
+    page_size = 25
 
 
 # ─── BESS Units ───────────────────────────────────────────────────────────────
@@ -262,10 +263,10 @@ class BESSUnitAdmin(ModelView, model=BESSUnit):
         BESSUnit.id,
         BESSUnit.serial_number,
         BESSUnit.current_stage,
-        BESSUnit.product_model_id,
-        BESSUnit.country_id,
-        BESSUnit.city_id,
-        BESSUnit.warehouse_id,
+        "product_model",
+        "country",
+        "city",
+        "warehouse",
         BESSUnit.site_address,
         BESSUnit.is_active,
         BESSUnit.is_deleted,
@@ -277,18 +278,22 @@ class BESSUnitAdmin(ModelView, model=BESSUnit):
     column_labels = {
         BESSUnit.id: "ID",
         BESSUnit.serial_number: "Serial Number",
-        BESSUnit.current_stage: "Current Stage",
-        BESSUnit.product_model_id: "Product Model",
-        BESSUnit.country_id: "Country",
-        BESSUnit.city_id: "City",
-        BESSUnit.warehouse_id: "Warehouse",
+        BESSUnit.current_stage: "Stage",
+        "product_model": "Product Model",
+        "country": "Country",
+        "city": "City",
+        "warehouse": "Warehouse",
         BESSUnit.site_address: "Site Address",
         BESSUnit.is_active: "Active",
         BESSUnit.is_deleted: "Deleted",
         BESSUnit.created_at: "Registered At",
     }
-    page_size = 20
-    page_size_options = [20, 50, 100]
+    column_export_list = [
+        BESSUnit.id, BESSUnit.serial_number, BESSUnit.current_stage,
+        BESSUnit.site_address, BESSUnit.is_active, BESSUnit.created_at,
+    ]
+    page_size = 25
+    page_size_options = [25, 50, 100]
 
 
 class StageHistoryAdmin(ModelView, model=StageHistory):
@@ -314,9 +319,9 @@ class StageHistoryAdmin(ModelView, model=StageHistory):
     column_default_sort = [(StageHistory.changed_at, True)]
     column_labels = {
         StageHistory.id: "ID",
-        StageHistory.bess_unit_id: "BESS Unit ID",
-        StageHistory.from_stage: "From Stage",
-        StageHistory.to_stage: "To Stage",
+        StageHistory.bess_unit_id: "BESS Unit",
+        StageHistory.from_stage: "From",
+        StageHistory.to_stage: "To",
         StageHistory.changed_by_user_id: "Changed By",
         StageHistory.notes: "Notes",
         StageHistory.changed_at: "Changed At",
@@ -345,15 +350,15 @@ class StageCertificateAdmin(ModelView, model=StageCertificate):
     column_default_sort = [(StageCertificate.uploaded_at, True)]
     column_labels = {
         StageCertificate.id: "ID",
-        StageCertificate.bess_unit_id: "BESS Unit ID",
+        StageCertificate.bess_unit_id: "BESS Unit",
         StageCertificate.stage: "Stage",
-        StageCertificate.certificate_name: "Certificate Name",
-        StageCertificate.certificate_url: "Document URL",
+        StageCertificate.certificate_name: "Certificate",
+        StageCertificate.certificate_url: "URL",
         StageCertificate.notes: "Notes",
         StageCertificate.uploaded_by_user_id: "Uploaded By",
         StageCertificate.uploaded_at: "Uploaded At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class AuditLogAdmin(ModelView, model=AuditLog):
@@ -381,7 +386,7 @@ class AuditLogAdmin(ModelView, model=AuditLog):
         AuditLog.id: "ID",
         AuditLog.user_id: "User ID",
         AuditLog.action: "Action",
-        AuditLog.entity_type: "Entity Type",
+        AuditLog.entity_type: "Entity",
         AuditLog.entity_id: "Entity ID",
         AuditLog.created_at: "Timestamp",
     }
@@ -401,10 +406,10 @@ class ShipmentAdmin(ModelView, model=Shipment):
         Shipment.id,
         Shipment.shipment_code,
         Shipment.status,
-        Shipment.origin_country_id,
-        Shipment.destination_country_id,
-        Shipment.warehouse_id,
-        Shipment.site_id,
+        "origin_country",
+        "destination_country",
+        "warehouse",
+        "site",
         Shipment.expected_quantity,
         Shipment.created_date,
         Shipment.expected_arrival_date,
@@ -415,18 +420,22 @@ class ShipmentAdmin(ModelView, model=Shipment):
     column_default_sort = [(Shipment.created_at, True)]
     column_labels = {
         Shipment.id: "ID",
-        Shipment.shipment_code: "Shipment Code",
+        Shipment.shipment_code: "Code",
         Shipment.status: "Status",
-        Shipment.origin_country_id: "Origin Country",
-        Shipment.destination_country_id: "Destination Country",
-        Shipment.warehouse_id: "Warehouse",
-        Shipment.site_id: "Site",
-        Shipment.expected_quantity: "Expected Qty",
+        "origin_country": "Origin",
+        "destination_country": "Destination",
+        "warehouse": "Warehouse",
+        "site": "Site",
+        Shipment.expected_quantity: "Qty",
         Shipment.created_date: "Shipment Date",
-        Shipment.expected_arrival_date: "Expected Arrival",
+        Shipment.expected_arrival_date: "ETA",
         Shipment.created_at: "Created At",
     }
-    page_size = 20
+    column_export_list = [
+        Shipment.id, Shipment.shipment_code, Shipment.status,
+        Shipment.expected_quantity, Shipment.created_date, Shipment.expected_arrival_date,
+    ]
+    page_size = 25
 
 
 class ShipmentItemAdmin(ModelView, model=ShipmentItem):
@@ -441,12 +450,12 @@ class ShipmentItemAdmin(ModelView, model=ShipmentItem):
     column_default_sort = [(ShipmentItem.created_at, True)]
     column_labels = {
         ShipmentItem.id: "ID",
-        ShipmentItem.shipment_id: "Shipment ID",
-        ShipmentItem.bess_unit_id: "BESS Unit ID",
+        ShipmentItem.shipment_id: "Shipment",
+        ShipmentItem.bess_unit_id: "BESS Unit",
         ShipmentItem.order_id: "Order ID",
         ShipmentItem.created_at: "Added At",
     }
-    page_size = 20
+    page_size = 25
 
 
 class ShipmentDocumentAdmin(ModelView, model=ShipmentDocument):
@@ -468,13 +477,13 @@ class ShipmentDocumentAdmin(ModelView, model=ShipmentDocument):
     column_default_sort = [(ShipmentDocument.uploaded_at, True)]
     column_labels = {
         ShipmentDocument.id: "ID",
-        ShipmentDocument.shipment_id: "Shipment ID",
-        ShipmentDocument.document_name: "Document Name",
+        ShipmentDocument.shipment_id: "Shipment",
+        ShipmentDocument.document_name: "Document",
         ShipmentDocument.document_type: "Type",
         ShipmentDocument.document_url: "URL",
         ShipmentDocument.uploaded_at: "Uploaded At",
     }
-    page_size = 20
+    page_size = 25
 
 
 # ─── Checklists ───────────────────────────────────────────────────────────────
@@ -499,7 +508,7 @@ class ChecklistTemplateAdmin(ModelView, model=ChecklistTemplate):
     column_labels = {
         ChecklistTemplate.id: "ID",
         ChecklistTemplate.stage: "Stage",
-        ChecklistTemplate.item_text: "Item Text",
+        ChecklistTemplate.item_text: "Item",
         ChecklistTemplate.is_mandatory: "Mandatory",
         ChecklistTemplate.requires_photo: "Photo Required",
         ChecklistTemplate.order_index: "Order",
@@ -536,8 +545,8 @@ class ChecklistResponseAdmin(ModelView, model=ChecklistResponse):
     column_default_sort = [(ChecklistResponse.checked_at, True)]
     column_labels = {
         ChecklistResponse.id: "ID",
-        ChecklistResponse.bess_unit_id: "BESS Unit ID",
-        ChecklistResponse.checklist_template_id: "Template ID",
+        ChecklistResponse.bess_unit_id: "BESS Unit",
+        ChecklistResponse.checklist_template_id: "Template",
         ChecklistResponse.stage: "Stage",
         ChecklistResponse.is_checked: "Checked",
         ChecklistResponse.checked_by_user_id: "Checked By",
@@ -557,11 +566,10 @@ class EngineerAdmin(ModelView, model=Engineer):
 
     column_list = [
         Engineer.id,
-        Engineer.user_id,
+        "user",
         Engineer.employee_code,
         Engineer.specialization,
-        Engineer.city_id,
-        Engineer.country_id,
+        "city",
         Engineer.is_available,
         Engineer.max_concurrent_assignments,
     ]
@@ -569,15 +577,14 @@ class EngineerAdmin(ModelView, model=Engineer):
     column_sortable_list = [Engineer.id, Engineer.employee_code, Engineer.specialization, Engineer.is_available]
     column_labels = {
         Engineer.id: "ID",
-        Engineer.user_id: "User ID",
+        "user": "User",
         Engineer.employee_code: "Employee Code",
         Engineer.specialization: "Specialization",
-        Engineer.city_id: "City",
-        Engineer.country_id: "Country",
+        "city": "City",
         Engineer.is_available: "Available",
         Engineer.max_concurrent_assignments: "Max Jobs",
     }
-    page_size = 20
+    page_size = 25
 
 
 class SiteAssignmentAdmin(ModelView, model=SiteAssignment):
@@ -589,7 +596,7 @@ class SiteAssignmentAdmin(ModelView, model=SiteAssignment):
     column_list = [
         SiteAssignment.id,
         SiteAssignment.bess_unit_id,
-        SiteAssignment.engineer_id,
+        "engineer",
         SiteAssignment.assigned_stage,
         SiteAssignment.status,
         SiteAssignment.assigned_by,
@@ -600,15 +607,15 @@ class SiteAssignmentAdmin(ModelView, model=SiteAssignment):
     column_default_sort = [(SiteAssignment.created_at, True)]
     column_labels = {
         SiteAssignment.id: "ID",
-        SiteAssignment.bess_unit_id: "BESS Unit ID",
-        SiteAssignment.engineer_id: "Engineer ID",
+        SiteAssignment.bess_unit_id: "BESS Unit",
+        "engineer": "Engineer",
         SiteAssignment.assigned_stage: "Stage",
         SiteAssignment.status: "Status",
         SiteAssignment.assigned_by: "Assigned By",
         SiteAssignment.notes: "Notes",
         SiteAssignment.created_at: "Assigned At",
     }
-    page_size = 20
+    page_size = 25
 
 
 # ─── Commissioning ────────────────────────────────────────────────────────────
@@ -632,14 +639,14 @@ class CommissioningRecordAdmin(ModelView, model=CommissioningRecord):
     column_default_sort = [(CommissioningRecord.created_at, True)]
     column_labels = {
         CommissioningRecord.id: "ID",
-        CommissioningRecord.bess_unit_id: "BESS Unit ID",
+        CommissioningRecord.bess_unit_id: "BESS Unit",
         CommissioningRecord.stage: "Stage",
         CommissioningRecord.status: "Status",
         CommissioningRecord.notes: "Notes",
         CommissioningRecord.recorded_by_user_id: "Recorded By",
         CommissioningRecord.created_at: "Recorded At",
     }
-    page_size = 20
+    page_size = 25
 
 
 # ─── Setup ────────────────────────────────────────────────────────────────────
@@ -650,7 +657,7 @@ def setup_admin(app: FastAPI, secret_key: str) -> None:
         engine=async_engine,
         base_url="/admin",
         authentication_backend=AdminAuthBackend(secret_key=secret_key),
-        title="BESS Lifecycle Admin",
+        title="UnityESS Admin",
     )
 
     # Access Control

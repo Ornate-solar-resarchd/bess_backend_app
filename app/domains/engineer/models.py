@@ -33,6 +33,10 @@ class Engineer(Base, TimestampMixin):
     max_concurrent_assignments: Mapped[int] = mapped_column(Integer, default=1)
     certifications: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    def __repr__(self) -> str:
+        name = self.user.full_name if self.user else f"#{self.user_id}"
+        return f"{name} ({self.employee_code})"
+
 
 class SiteAssignment(Base, TimestampMixin):
     __tablename__ = "site_assignments"

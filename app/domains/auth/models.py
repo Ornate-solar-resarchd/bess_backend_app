@@ -16,3 +16,6 @@ class User(Base, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    def __repr__(self) -> str:
+        return self.full_name
