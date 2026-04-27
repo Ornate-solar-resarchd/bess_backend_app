@@ -1,0 +1,20 @@
+name: Deploy BESS API
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-bess-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: Ornate-solar-resarchd/portals-infra/.github/workflows/_deploy-template.yml@main
+    with:
+      portal:       bess-api
+      portal_dir:   bess_backend_app
+      services:     "bess-api bess-worker"
+      health_url:   "https://bess.unityess.cloud/"
+      runner_label: bess-api
