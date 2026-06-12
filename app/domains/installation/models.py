@@ -27,6 +27,7 @@ class ChecklistResponse(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     bess_unit_id: Mapped[int] = mapped_column(ForeignKey("bess_units.id"), nullable=False, index=True)
+    bess_unit: Mapped["BESSUnit"] = relationship(lazy="selectin")  # noqa: F821 - admin dropdowns
     checklist_template_id: Mapped[int] = mapped_column(ForeignKey("checklist_templates.id"), nullable=False)
     template: Mapped[ChecklistTemplate] = relationship(lazy="selectin")
     stage: Mapped[BESSStage] = mapped_column(SQLAlchemyEnum(BESSStage), nullable=False)

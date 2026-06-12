@@ -44,7 +44,13 @@ class BESSUnit(Base, TimestampMixin, SoftDeleteMixin):
     site_longitude: Mapped[float | None] = mapped_column(nullable=True)
 
     customer_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    customer_user: Mapped["User | None"] = relationship(  # noqa: F821 - admin dropdowns
+        lazy="selectin", foreign_keys=[customer_user_id]
+    )
     installed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    installed_by_user: Mapped["User | None"] = relationship(  # noqa: F821 - admin dropdowns
+        lazy="selectin", foreign_keys=[installed_by_user_id]
+    )
 
     manufactured_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -80,6 +86,7 @@ class StageCertificate(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     bess_unit_id: Mapped[int] = mapped_column(ForeignKey("bess_units.id"), nullable=False, index=True)
+    bess_unit: Mapped["BESSUnit"] = relationship(lazy="selectin")  # noqa: F821 - admin dropdowns
     stage: Mapped[BESSStage] = mapped_column(SQLAlchemyEnum(BESSStage), nullable=False, index=True)
     certificate_name: Mapped[str] = mapped_column(String(200), nullable=False)
     certificate_url: Mapped[str] = mapped_column(String(500), nullable=False)

@@ -29,6 +29,7 @@ class Engineer(Base, TimestampMixin):
     city_id: Mapped[int] = mapped_column(ForeignKey("cities.id"), nullable=False)
     city: Mapped["City"] = relationship(lazy="selectin")
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+    country: Mapped["Country"] = relationship(lazy="selectin")  # noqa: F821 - admin dropdowns
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)
     max_concurrent_assignments: Mapped[int] = mapped_column(Integer, default=1)
     certifications: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -43,6 +44,7 @@ class SiteAssignment(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     bess_unit_id: Mapped[int] = mapped_column(ForeignKey("bess_units.id"), nullable=False, index=True)
+    bess_unit: Mapped["BESSUnit"] = relationship(lazy="selectin")  # noqa: F821 - admin dropdowns
     engineer_id: Mapped[int] = mapped_column(ForeignKey("engineers.id"), nullable=False)
     engineer: Mapped[Engineer] = relationship(lazy="selectin")
     assigned_stage: Mapped[BESSStage] = mapped_column(SQLAlchemyEnum(BESSStage), nullable=False)

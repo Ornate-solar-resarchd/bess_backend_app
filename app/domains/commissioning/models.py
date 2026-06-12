@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import Enum as SQLAlchemyEnum, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.shared.base_model import Base, TimestampMixin
 from app.shared.enums import BESSStage
@@ -12,7 +12,9 @@ class CommissioningRecord(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     bess_unit_id: Mapped[int] = mapped_column(ForeignKey("bess_units.id"), nullable=False, index=True)
+    bess_unit: Mapped["BESSUnit"] = relationship(lazy="selectin")  # noqa: F821 - admin dropdowns
     stage: Mapped[BESSStage] = mapped_column(SQLAlchemyEnum(BESSStage), nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="PASS", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     recorded_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    recorded_by_user: Mapped["User"] = relationship(lazy="selectin")  # noqa: F821 - admin dropdowns

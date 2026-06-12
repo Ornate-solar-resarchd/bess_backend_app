@@ -31,6 +31,9 @@ class RolePermission(Base):
     permission_id: Mapped[int] = mapped_column(
         ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True
     )
+    # Relationships so the admin panel can render proper dropdowns/labels.
+    role: Mapped[Role] = relationship(lazy="selectin")
+    permission: Mapped[Permission] = relationship(lazy="selectin")
 
 
 class UserRole(Base):
@@ -43,3 +46,5 @@ class UserRole(Base):
     assigned_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     role: Mapped[Role] = relationship(lazy="selectin")
+    # foreign_keys needed: both user_id and assigned_by_user_id point at users.
+    user: Mapped["User"] = relationship(lazy="selectin", foreign_keys=[user_id])  # noqa: F821
