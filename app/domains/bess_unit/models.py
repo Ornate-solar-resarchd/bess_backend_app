@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.shared.base_model import Base, SoftDeleteMixin, TimestampMixin
 from app.shared.enums import BESSStage
-from app.domains.master.models import ProductModel,Country,City,Warehouse
+from app.domains.master.models import ProductModel,Country,State,City,Warehouse
 
 
 class BESSUnit(Base, TimestampMixin, SoftDeleteMixin):
@@ -28,6 +28,10 @@ class BESSUnit(Base, TimestampMixin, SoftDeleteMixin):
 
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
     country: Mapped["Country"] = relationship(lazy="selectin", foreign_keys=[country_id])
+
+    # Nullable for back-compat: the published mobile app doesn't send state yet.
+    state_id: Mapped[int | None] = mapped_column(ForeignKey("states.id"), nullable=True)
+    state: Mapped["State | None"] = relationship(lazy="selectin", foreign_keys=[state_id])
 
     city_id: Mapped[int] = mapped_column(ForeignKey("cities.id"), nullable=False)
     city: Mapped["City"] = relationship(lazy="selectin", foreign_keys=[city_id])

@@ -29,6 +29,8 @@ class BESSUnitCreate(BaseModel):
     regenerate_qr_png: bool = True
     product_model_id: int
     country_id: int
+    # Optional for back-compat — the published mobile app sends only country/city.
+    state_id: int | None = None
     city_id: int
     warehouse_id: int | None = None
     site_address: str | None = None
@@ -44,6 +46,7 @@ class BESSUnitRegisterFromQR(BaseModel):
     existing_qr_code_url: str | None = None
     product_model_id: int | None = None
     country_id: int
+    state_id: int | None = None
     city_id: int
     warehouse_id: int | None = None
     site_address: str | None = None
@@ -68,6 +71,7 @@ class QRParseResponse(BaseModel):
 
 class BESSUnitUpdate(BaseModel):
     country_id: int | None = None
+    state_id: int | None = None
     city_id: int | None = None
     warehouse_id: int | None = None
     site_address: str | None = None
@@ -87,6 +91,7 @@ class BESSUnitRead(BaseModel):
     is_active: bool
     product_model: NestedProductModel
     country: NestedNamed
+    state: NestedNamed | None = None
     city: NestedNamed
     warehouse: NestedNamed | None
     site_address: str | None

@@ -53,7 +53,7 @@ async def register_user(db: AsyncSession, payload: RegisterRequest) -> User:
 
 
 async def authenticate(db: AsyncSession, payload: LoginRequest) -> User:
-    user = await db.scalar(select(User).where(User.email == payload.email.lower()))
+    user = await db.scalar(select(User).where(User.email == payload.email.strip().lower()))
     if user is None or not verify_password(payload.password, user.hashed_password):
         raise APIValidationException("Invalid email or password")
     if not user.is_active:

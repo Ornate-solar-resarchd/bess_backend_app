@@ -37,7 +37,7 @@ from app.domains.bess_unit.schemas import (
 from app.domains.engineer.tasks import auto_assign_engineer_task
 from app.domains.installation.service import ensure_handover_document
 from app.domains.installation.repository import checklist_repository
-from app.domains.master.models import City, Country, ProductModel
+from app.domains.master.models import City, Country, ProductModel, State
 from app.domains.master.normalization import build_product_description, normalize_hess_to_uess
 from app.domains.shipment.repository import shipment_repository
 from app.services.s3 import is_s3_media_enabled, upload_bytes_to_s3
@@ -486,6 +486,7 @@ async def register_bess_from_qr(
             regenerate_qr_png=False,
             product_model_id=product_model_id,
             country_id=payload.country_id,
+            state_id=payload.state_id,
             city_id=payload.city_id,
             warehouse_id=None,
             site_address=payload.site_address,
@@ -505,6 +506,7 @@ async def register_bess_from_photo(
     country_id: int,
     city_id: int,
     current_user: User,
+    state_id: int | None = None,
     ocr_text_override: str | None = None,
     serial_number_override: str | None = None,
     existing_qr_code_url: str | None = None,
@@ -551,6 +553,7 @@ async def register_bess_from_photo(
             regenerate_qr_png=True,
             product_model_id=resolved_product_model_id,
             country_id=country_id,
+            state_id=state_id,
             city_id=city_id,
             warehouse_id=None,
             site_address=site_address,
@@ -570,6 +573,12 @@ async def create_bess_unit(db: AsyncSession, payload: BESSUnitCreate, current_us
     country = await db.get(Country, payload.country_id)
     if not country:
         raise APINotFoundException("Country not found")
+    if payload.state_id is not None:
+        state = await db.get(State, payload.state_id)
+        if not state:
+            raise APINotFoundException("State not found")
+        if state.country_id != payload.country_id:
+            raise APIValidationException("State does not belong to the selected country")
     city = await db.get(City, payload.city_id)
     if not city:
         raise APINotFoundException("City not found")
@@ -588,6 +597,7 @@ async def create_bess_unit(db: AsyncSession, payload: BESSUnitCreate, current_us
             nameplate_photo_url=payload.nameplate_photo_url,
             product_model_id=payload.product_model_id,
             country_id=payload.country_id,
+            state_id=payload.state_id,
             city_id=payload.city_id,
             warehouse_id=payload.warehouse_id,
             site_address=payload.site_address,

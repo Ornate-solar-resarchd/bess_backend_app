@@ -12,7 +12,7 @@ from app.domains.bess_unit.models import AuditLog, BESSUnit, StageCertificate, S
 from app.domains.commissioning.models import CommissioningRecord
 from app.domains.engineer.models import Engineer, SiteAssignment
 from app.domains.installation.models import ChecklistResponse, ChecklistTemplate
-from app.domains.master.models import City, Country, ProductModel, Site, Warehouse
+from app.domains.master.models import City, Country, ProductModel, Site, State, Warehouse
 from app.domains.rbac.models import Permission, Role, RolePermission, UserRole
 from app.domains.shipment.models import Shipment, ShipmentDocument, ShipmentItem
 
@@ -173,22 +173,45 @@ class CountryAdmin(ModelView, model=Country):
     page_size = 25
 
 
+class StateAdmin(ModelView, model=State):
+    name = "State"
+    name_plural = "States"
+    icon = "fa-solid fa-map"
+    category = "Master Data"
+
+    column_list = [State.id, State.name, "country", State.created_at]
+    column_searchable_list = [State.name]
+    column_sortable_list = [State.id, State.name, State.created_at]
+    column_labels = {
+        State.id: "ID",
+        State.name: "State Name",
+        "country": "Country",
+        State.created_at: "Created At",
+    }
+    form_columns = [State.name, "country"]
+    page_size = 50
+    page_size_options = [25, 50, 100]
+
+
 class CityAdmin(ModelView, model=City):
     name = "City"
     name_plural = "Cities"
     icon = "fa-solid fa-city"
     category = "Master Data"
 
-    column_list = [City.id, City.name, "country", City.created_at]
+    column_list = [City.id, City.name, "country", "state", City.created_at]
     column_searchable_list = [City.name]
     column_sortable_list = [City.id, City.name, City.created_at]
     column_labels = {
         City.id: "ID",
         City.name: "City Name",
         "country": "Country",
+        "state": "State",
         City.created_at: "Created At",
     }
-    page_size = 25
+    form_columns = [City.name, "country", "state"]
+    page_size = 50
+    page_size_options = [25, 50, 100]
 
 
 class WarehouseAdmin(ModelView, model=Warehouse):
@@ -265,6 +288,7 @@ class BESSUnitAdmin(ModelView, model=BESSUnit):
         BESSUnit.current_stage,
         "product_model",
         "country",
+        "state",
         "city",
         "warehouse",
         BESSUnit.site_address,
@@ -281,6 +305,7 @@ class BESSUnitAdmin(ModelView, model=BESSUnit):
         BESSUnit.current_stage: "Stage",
         "product_model": "Product Model",
         "country": "Country",
+        "state": "State",
         "city": "City",
         "warehouse": "Warehouse",
         BESSUnit.site_address: "Site Address",
@@ -669,6 +694,7 @@ def setup_admin(app: FastAPI, secret_key: str) -> None:
 
     # Master Data
     admin.add_view(CountryAdmin)
+    admin.add_view(StateAdmin)
     admin.add_view(CityAdmin)
     admin.add_view(WarehouseAdmin)
     admin.add_view(SiteAdmin)

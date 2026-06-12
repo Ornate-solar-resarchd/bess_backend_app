@@ -11,7 +11,11 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Plain str, not EmailStr: strict format validation belongs at registration.
+    # At login we only compare against stored emails — a malformed address
+    # (e.g. "admin@bess" instead of "admin@bess.com") should produce a clean
+    # "Invalid email or password", not a 500 from pydantic validation.
+    email: str = Field(min_length=1, max_length=255)
     password: str
 
 

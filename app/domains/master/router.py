@@ -12,8 +12,11 @@ from app.domains.master.schemas import (
     CityRead,
     CountryCreate,
     CountryRead,
+    StateCreate,
+    StateRead,
     PaginatedCities,
     PaginatedCountries,
+    PaginatedStates,
     PaginatedProductModels,
     PaginatedSites,
     PaginatedWarehouses,
@@ -48,14 +51,40 @@ async def create_country(
     return CountryRead.model_validate(obj)
 
 
-@router.get("/cities", response_model=PaginatedCities, dependencies=[Depends(require_permission("master:read"))])
-async def get_cities(
+@router.get("/states", response_model=PaginatedStates, dependencies=[Depends(require_permission("master:read"))])
+async def get_states(
     country_id: int | None = None,
     page: int = 1,
     size: int = 20,
     db: AsyncSession = Depends(get_db),
+) -> PaginatedStates:
+    total, items = await service.list_states(db, page, size, country_id)
+    return PaginatedStates(total=total, items=[StateRead.model_validate(i) for i in items], page=page, size=size)
+
+
+@router.post(
+    "/states",
+    response_model=StateRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_state(
+    payload: StateCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("master:write")),
+) -> StateRead:
+    obj = await service.create_state(db, payload, current_user)
+    return StateRead.model_validate(obj)
+
+
+@router.get("/cities", response_model=PaginatedCities, dependencies=[Depends(require_permission("master:read"))])
+async def get_cities(
+    country_id: int | None = None,
+    state_id: int | None = None,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
 ) -> PaginatedCities:
-    total, items = await service.list_cities(db, page, size, country_id)
+    total, items = await service.list_cities(db, page, size, country_id, state_id)
     return PaginatedCities(total=total, items=[CityRead.model_validate(i) for i in items], page=page, size=size)
 
 

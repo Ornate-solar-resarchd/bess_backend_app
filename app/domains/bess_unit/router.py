@@ -63,6 +63,7 @@ async def register_unit_from_qr(
 async def register_unit_from_photo(
     photo: UploadFile = File(...),
     country_id: int = Form(...),
+    state_id: int | None = Form(default=None),
     city_id: int = Form(...),
     ocr_text_override: str | None = Form(default=None),
     serial_number_override: str | None = Form(default=None),
@@ -80,6 +81,7 @@ async def register_unit_from_photo(
         db,
         photo=photo,
         country_id=country_id,
+        state_id=state_id,
         city_id=city_id,
         current_user=current_user,
         ocr_text_override=ocr_text_override,
@@ -162,6 +164,9 @@ async def list_shipments_for_bess(
     return await service.list_bess_shipments(db, bess_unit_id, page, size, customer_filter)
 
 
+# Accept both /bess/{id} and /bess/{id}/ — stacking the decorator avoids the
+# 307 redirect that drops the Authorization header in browser fetch clients.
+@router.get("/{bess_unit_id}/", response_model=BESSUnitRead, include_in_schema=False)
 @router.get("/{bess_unit_id}", response_model=BESSUnitRead)
 async def get_unit(
     bess_unit_id: int,
@@ -195,6 +200,7 @@ async def get_qrcode(
     return await service.get_qr_code_file(db, bess_unit_id)
 
 
+@router.patch("/{bess_unit_id}/", response_model=BESSUnitRead, include_in_schema=False)
 @router.patch("/{bess_unit_id}", response_model=BESSUnitRead)
 async def update_unit(
     bess_unit_id: int,
@@ -223,6 +229,7 @@ async def transition_unit(
     return BESSUnitRead.model_validate(obj)
 
 
+@router.delete("/{bess_unit_id}/", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
 @router.delete("/{bess_unit_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_unit(
     bess_unit_id: int,

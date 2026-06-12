@@ -17,6 +17,25 @@ class Country(Base, TimestampMixin):
         return self.name
 
 
+class State(Base, TimestampMixin):
+    """Administrative level between Country and City (e.g. Indian states).
+
+    Unit-creation flow: pick Country → states of that country → cities of
+    that state.
+    """
+
+    __tablename__ = "states"
+    __table_args__ = (UniqueConstraint("name", "country_id", name="uq_state_country"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+    country: Mapped[Country] = relationship(lazy="selectin")
+
+    def __repr__(self) -> str:
+        return self.name
+
+
 class City(Base, TimestampMixin):
     __tablename__ = "cities"
     __table_args__ = (UniqueConstraint("name", "country_id", name="uq_city_country"),)
@@ -25,6 +44,9 @@ class City(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
     country: Mapped[Country] = relationship(lazy="selectin")
+    # Nullable for back-compat with pre-state rows; new cities should set it.
+    state_id: Mapped[int | None] = mapped_column(ForeignKey("states.id"), nullable=True)
+    state: Mapped[State | None] = relationship(lazy="selectin")
 
     def __repr__(self) -> str:
         return self.name

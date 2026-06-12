@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.master.models import City, Country, ProductModel, Site, Warehouse
+from app.domains.master.models import City, Country, State, ProductModel, Site, Warehouse
 
 
 class MasterRepository:
@@ -19,22 +19,57 @@ class MasterRepository:
         await db.flush()
         return obj
 
-    async def list_cities(
+    async def list_states(
         self, db: AsyncSession, page: int, size: int, country_id: int | None
+    ) -> tuple[int, list[State]]:
+        count_stmt = select(func.count(State.id))
+        stmt: Select[tuple[State]] = select(State)
+        if country_id is not None:
+            count_stmt = count_stmt.where(State.country_id == country_id)
+            stmt = stmt.where(State.country_id == country_id)
+        total = await db.scalar(count_stmt)
+        items = (
+            await db.scalars(stmt.order_by(State.name).offset((page - 1) * size).limit(size))
+        ).all()
+        return int(total or 0), list(items)
+
+    async def create_state(self, db: AsyncSession, name: str, country_id: int) -> State:
+        obj = State(name=name, country_id=country_id)
+        db.add(obj)
+        await db.flush()
+        await db.refresh(obj)
+        return obj
+
+    async def list_cities(
+        self,
+        db: AsyncSession,
+        page: int,
+        size: int,
+        country_id: int | None,
+        state_id: int | None = None,
     ) -> tuple[int, list[City]]:
         count_stmt = select(func.count(City.id))
         stmt: Select[tuple[City]] = select(City)
         if country_id is not None:
             count_stmt = count_stmt.where(City.country_id == country_id)
             stmt = stmt.where(City.country_id == country_id)
+        if state_id is not None:
+            count_stmt = count_stmt.where(City.state_id == state_id)
+            stmt = stmt.where(City.state_id == state_id)
         total = await db.scalar(count_stmt)
+        # Old mobile clients fetch size=20 with no state filter; order by id there so
+        # the original (most-used) cities stay on the first page. With a state filter
+        # the list is short, so alphabetical is fine.
+        order_col = City.name if state_id is not None else City.id
         items = (
-            await db.scalars(stmt.order_by(City.name).offset((page - 1) * size).limit(size))
+            await db.scalars(stmt.order_by(order_col).offset((page - 1) * size).limit(size))
         ).all()
         return int(total or 0), list(items)
 
-    async def create_city(self, db: AsyncSession, name: str, country_id: int) -> City:
-        obj = City(name=name, country_id=country_id)
+    async def create_city(
+        self, db: AsyncSession, name: str, country_id: int, state_id: int | None = None
+    ) -> City:
+        obj = City(name=name, country_id=country_id, state_id=state_id)
         db.add(obj)
         await db.flush()
         await db.refresh(obj)

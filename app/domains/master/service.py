@@ -6,10 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domains.auth.models import User
 from app.domains.bess_unit.models import AuditLog
 from app.domains.bess_unit.repository import bess_repository
-from app.domains.master.models import City, Country, ProductModel, Site
+from app.domains.master.models import City, Country, State, ProductModel, Site
 from app.domains.master.normalization import build_product_description, normalize_hess_to_uess
 from app.domains.master.repository import master_repository
-from app.domains.master.schemas import CityCreate, CountryCreate, ProductModelCreate, SiteCreate, WarehouseCreate
+from app.domains.master.schemas import (
+    CityCreate,
+    CountryCreate,
+    StateCreate,
+    ProductModelCreate,
+    SiteCreate,
+    WarehouseCreate,
+)
 from app.shared.acid import atomic
 from app.shared.exceptions import APIConflictException, APINotFoundException
 
@@ -37,21 +44,59 @@ async def create_country(db: AsyncSession, payload: CountryCreate, current_user:
         return obj
 
 
-async def list_cities(db: AsyncSession, page: int, size: int, country_id: int | None):
-    return await master_repository.list_cities(db, page, size, country_id)
+async def list_states(db: AsyncSession, page: int, size: int, country_id: int | None):
+    return await master_repository.list_states(db, page, size, country_id)
+
+
+async def create_state(db: AsyncSession, payload: StateCreate, current_user: User):
+    country_exists = await db.get(Country, payload.country_id)
+    if not country_exists:
+        raise APINotFoundException("Country not found")
+    duplicate = await db.scalar(
+        select(State).where(State.name == payload.name, State.country_id == payload.country_id)
+    )
+    if duplicate:
+        raise APIConflictException("State already exists for country")
+    async with atomic(db) as session:
+        obj = await master_repository.create_state(session, payload.name, payload.country_id)
+        await bess_repository.create_audit_log(
+            session,
+            AuditLog(
+                user_id=current_user.id,
+                action="MASTER_DISTRICT_CREATE",
+                entity_type="State",
+                entity_id=obj.id,
+                payload_json={"name": obj.name, "country_id": obj.country_id},
+            ),
+        )
+        return obj
+
+
+async def list_cities(
+    db: AsyncSession, page: int, size: int, country_id: int | None, state_id: int | None = None
+):
+    return await master_repository.list_cities(db, page, size, country_id, state_id)
 
 
 async def create_city(db: AsyncSession, payload: CityCreate, current_user: User):
     country_exists = await db.get(Country, payload.country_id)
     if not country_exists:
         raise APINotFoundException("Country not found")
+    if payload.state_id is not None:
+        state = await db.get(State, payload.state_id)
+        if not state:
+            raise APINotFoundException("State not found")
+        if state.country_id != payload.country_id:
+            raise APIConflictException("State does not belong to the selected country")
     duplicate = await db.scalar(
         select(City).where(City.name == payload.name, City.country_id == payload.country_id)
     )
     if duplicate:
         raise APIConflictException("City already exists for country")
     async with atomic(db) as session:
-        obj = await master_repository.create_city(session, payload.name, payload.country_id)
+        obj = await master_repository.create_city(
+            session, payload.name, payload.country_id, payload.state_id
+        )
         await bess_repository.create_audit_log(
             session,
             AuditLog(
@@ -59,7 +104,7 @@ async def create_city(db: AsyncSession, payload: CityCreate, current_user: User)
                 action="MASTER_CITY_CREATE",
                 entity_type="City",
                 entity_id=obj.id,
-                payload_json={"name": obj.name, "country_id": obj.country_id},
+                payload_json={"name": obj.name, "country_id": obj.country_id, "state_id": obj.state_id},
             ),
         )
         return obj

@@ -18,16 +18,39 @@ class CountryRead(CountryBase):
     id: int
 
 
-class CityCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    country_id: int
-
-
 class NestedCountry(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     name: str
+
+
+class StateCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    country_id: int
+
+
+class StateRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    country: NestedCountry
+
+
+class NestedState(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+
+
+class CityCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    country_id: int
+    # Optional for backward compatibility — the published mobile app sends
+    # only (name, country_id). New clients send state_id too.
+    state_id: int | None = None
 
 
 class CityRead(BaseModel):
@@ -36,6 +59,7 @@ class CityRead(BaseModel):
     id: int
     name: str
     country: NestedCountry
+    state: NestedState | None = None
 
 
 class WarehouseCreate(BaseModel):
@@ -100,6 +124,13 @@ class ProductModelRead(BaseModel):
 class PaginatedCountries(BaseModel):
     total: int
     items: list[CountryRead]
+    page: int
+    size: int
+
+
+class PaginatedStates(BaseModel):
+    total: int
+    items: list[StateRead]
     page: int
     size: int
 
