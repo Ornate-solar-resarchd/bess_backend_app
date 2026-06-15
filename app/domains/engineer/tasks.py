@@ -40,13 +40,14 @@ def notify_engineer_task(self, assignment_id: int):
             assignment = await engineer_repository.get_assignment(db, assignment_id)
             if assignment is None:
                 return
-            checklist_count = await checklist_repository.checklist_count_for_stage(db, assignment.assigned_stage)
-            serial_stmt = select(BESSUnit.serial_number, BESSUnit.site_address).where(
+            serial_stmt = select(BESSUnit.serial_number, BESSUnit.site_address, BESSUnit.product_model_id).where(
                 BESSUnit.id == assignment.bess_unit_id
             )
             serial_row = (await db.execute(serial_stmt)).first()
             serial_number = serial_row[0] if serial_row else "UNKNOWN"
             site_address = serial_row[1] if serial_row else None
+            product_model_id = serial_row[2] if serial_row else None
+            checklist_count = await checklist_repository.checklist_count_for_stage(db, assignment.assigned_stage, product_model_id)
             message = {
                 "assignment_id": assignment_id,
                 "serial_number": serial_number,

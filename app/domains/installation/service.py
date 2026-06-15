@@ -54,7 +54,7 @@ async def get_stage_checklist(db: AsyncSession, bess_unit_id: int, stage: BESSSt
     unit = await bess_repository.get_by_id(db, bess_unit_id)
     if unit is None or unit.is_deleted:
         raise BESSNotFoundException(bess_unit_id)
-    return await checklist_repository.get_stage_items(db, bess_unit_id, stage)
+    return await checklist_repository.get_stage_items(db, bess_unit_id, stage, unit.product_model_id)
 
 
 async def update_checklist_item(
@@ -119,7 +119,7 @@ async def validate_stage_checklist(
     if unit is None or unit.is_deleted:
         raise BESSNotFoundException(bess_unit_id)
 
-    pending = await checklist_repository.get_incomplete_mandatory(db, bess_unit_id, stage)
+    pending = await checklist_repository.get_incomplete_mandatory(db, bess_unit_id, stage, unit.product_model_id)
     return ChecklistValidationResponse(all_complete=not pending, pending_items=pending)
 
 

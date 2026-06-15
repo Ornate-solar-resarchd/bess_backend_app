@@ -14,6 +14,8 @@ class ChecklistTemplate(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     stage: Mapped[BESSStage] = mapped_column(SQLAlchemyEnum(BESSStage), nullable=False, index=True)
+    # NULL = applies to all product models; set = applies only to that model
+    product_model_id: Mapped[int | None] = mapped_column(ForeignKey("product_models.id"), nullable=True, index=True)
     item_text: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     safety_warning: Mapped[str | None] = mapped_column(Text, nullable=True)

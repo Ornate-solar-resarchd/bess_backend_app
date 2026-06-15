@@ -298,7 +298,7 @@ async def _build_assignment_with_progress(
     bess_unit = await db.get(BESSUnit, assignment.bess_unit_id)
     if bess_unit is None or bess_unit.is_deleted:
         return None
-    total = await checklist_repository.checklist_count_for_stage(db, assignment.assigned_stage)
+    total = await checklist_repository.checklist_count_for_stage(db, assignment.assigned_stage, bess_unit.product_model_id if bess_unit else None)
     completed = await checklist_repository.count_completed_for_stage(db, assignment.bess_unit_id, assignment.assigned_stage)
     return AssignmentWithProgressRead(
         id=assignment.id,

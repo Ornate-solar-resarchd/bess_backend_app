@@ -28,10 +28,12 @@ class ChecklistJoinedItem:
 
 
 class ChecklistRepository:
-    async def get_templates_by_stage(self, db: AsyncSession, stage: BESSStage) -> list[ChecklistTemplate]:
+    async def get_templates_by_stage(
+        self, db: AsyncSession, stage: BESSStage, product_model_id: int | None = None
+    ) -> list[ChecklistTemplate]:
         stmt: Select[tuple[ChecklistTemplate]] = (
             select(ChecklistTemplate)
-            .where(ChecklistTemplate.stage == stage)
+            .where(ChecklistTemplate.stage == stage, ChecklistTemplate.product_model_id == product_model_id)
             .order_by(ChecklistTemplate.order_index.asc(), ChecklistTemplate.id.asc())
         )
         return list((await db.scalars(stmt)).all())
@@ -66,6 +68,7 @@ class ChecklistRepository:
         db: AsyncSession,
         bess_unit_id: int,
         stage: BESSStage,
+        product_model_id: int | None = None,
     ) -> list[ChecklistJoinedItem]:
         stmt = (
             select(ChecklistTemplate, ChecklistResponse)
@@ -76,7 +79,7 @@ class ChecklistRepository:
                     ChecklistResponse.bess_unit_id == bess_unit_id,
                 ),
             )
-            .where(ChecklistTemplate.stage == stage)
+            .where(ChecklistTemplate.stage == stage, ChecklistTemplate.product_model_id == product_model_id)
             .order_by(ChecklistTemplate.order_index.asc(), ChecklistTemplate.id.asc())
         )
         rows = (await db.execute(stmt)).all()
@@ -106,8 +109,9 @@ class ChecklistRepository:
         db: AsyncSession,
         bess_unit_id: int,
         stage: BESSStage,
+        product_model_id: int | None = None,
     ) -> list[str]:
-        stage_items = await self.get_stage_items(db, bess_unit_id, stage)
+        stage_items = await self.get_stage_items(db, bess_unit_id, stage, product_model_id)
         return [item.item_text for item in stage_items if item.is_mandatory and not item.is_checked]
 
     async def get_stage_checklist(
@@ -115,8 +119,9 @@ class ChecklistRepository:
         db: AsyncSession,
         bess_unit_id: int,
         stage: BESSStage,
+        product_model_id: int | None = None,
     ) -> list[ChecklistJoinedItem]:
-        return await self.get_stage_items(db, bess_unit_id, stage)
+        return await self.get_stage_items(db, bess_unit_id, stage, product_model_id)
 
     async def get_current_stage_engineer(
         self,
@@ -138,8 +143,13 @@ class ChecklistRepository:
         )
         return await db.scalar(stmt)
 
-    async def checklist_count_for_stage(self, db: AsyncSession, stage: BESSStage) -> int:
-        stmt = select(func.count(ChecklistTemplate.id)).where(ChecklistTemplate.stage == stage)
+    async def checklist_count_for_stage(
+        self, db: AsyncSession, stage: BESSStage, product_model_id: int | None = None
+    ) -> int:
+        stmt = select(func.count(ChecklistTemplate.id)).where(
+            ChecklistTemplate.stage == stage,
+            ChecklistTemplate.product_model_id == product_model_id,
+        )
         return int(await db.scalar(stmt) or 0)
 
     async def count_completed_for_stage(self, db: AsyncSession, bess_unit_id: int, stage: BESSStage) -> int:

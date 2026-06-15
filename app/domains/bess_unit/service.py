@@ -768,7 +768,7 @@ async def transition_stage(
     if to_stage == BESSStage.DISPATCHED_TO_SITE and not unit.site_address:
         raise APIValidationException("Set site details before DISPATCHED_TO_SITE stage.")
 
-    pending = await checklist_repository.get_incomplete_mandatory(db, bess_unit_id, unit.current_stage)
+    pending = await checklist_repository.get_incomplete_mandatory(db, bess_unit_id, unit.current_stage, unit.product_model_id)
     if pending:
         raise ChecklistIncompleteException(pending)
 
@@ -926,7 +926,7 @@ async def scan_by_serial(db: AsyncSession, serial_number: str) -> ScanResponse:
 
 async def _build_scan_response(db: AsyncSession, unit: BESSUnit) -> ScanResponse:
     assigned_engineer = await checklist_repository.get_current_stage_engineer(db, unit.id, unit.current_stage)
-    checklist = await checklist_repository.get_stage_checklist(db, unit.id, unit.current_stage)
+    checklist = await checklist_repository.get_stage_checklist(db, unit.id, unit.current_stage, unit.product_model_id)
 
     return ScanResponse(
         bess_unit=unit,
