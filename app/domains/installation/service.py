@@ -123,8 +123,8 @@ async def validate_stage_checklist(
     return ChecklistValidationResponse(all_complete=not pending, pending_items=pending)
 
 
-def _resolve_local_media_path(photo_url: str) -> Path | None:
-    if not photo_url.startswith("/media/"):
+def _resolve_local_media_path(photo_url: str | None) -> Path | None:
+    if not photo_url or not photo_url.startswith("/media/"):
         return None
     relative = photo_url[len("/media/") :]
     return Path(settings.media_root) / relative
@@ -412,7 +412,7 @@ def _create_report_page(
 
 def _paste_photo_preview(
     page: Image.Image,
-    photo_url: str,
+    photo_url: str | None,
     x: int,
     y: int,
     max_width: int = 280,
