@@ -444,10 +444,12 @@ async def _resolve_user_name(db: AsyncSession, user_id: int | None, default_labe
     return user.full_name.strip() or f"{default_label} (User #{user_id})"
 
 
-async def _collect_stage_items(db: AsyncSession, bess_unit_id: int) -> list[tuple[BESSStage, list[object]]]:
+async def _collect_stage_items(
+    db: AsyncSession, bess_unit_id: int, product_model_id: int | None = None
+) -> list[tuple[BESSStage, list[object]]]:
     stage_items: list[tuple[BESSStage, list[object]]] = []
     for stage in BESSStage:
-        items = await checklist_repository.get_stage_items(db, bess_unit_id, stage)
+        items = await checklist_repository.get_stage_items(db, bess_unit_id, stage, product_model_id)
         if not items:
             continue
         stage_items.append((stage, items))
@@ -492,7 +494,7 @@ async def export_checklist_pdf(db: AsyncSession, bess_unit_id: int) -> Path:
     if unit is None or unit.is_deleted:
         raise BESSNotFoundException(bess_unit_id)
 
-    stage_items = await _collect_stage_items(db, bess_unit_id)
+    stage_items = await _collect_stage_items(db, bess_unit_id, unit.product_model_id)
     _raise_if_pending_mandatory_items(stage_items, report_label="final checklist PDF")
 
     generated_at = datetime.now(UTC).isoformat()
@@ -556,7 +558,7 @@ async def export_handover_pdf(db: AsyncSession, bess_unit_id: int) -> Path:
     if unit is None or unit.is_deleted:
         raise BESSNotFoundException(bess_unit_id)
 
-    stage_items = await _collect_stage_items(db, bess_unit_id)
+    stage_items = await _collect_stage_items(db, bess_unit_id, unit.product_model_id)
     _raise_if_pending_mandatory_items(stage_items, report_label="handover document")
 
     engineer_signature_item, customer_signature_item = _find_signature_items(stage_items)
@@ -794,7 +796,7 @@ async def get_handover_document_data(db: AsyncSession, bess_unit_id: int) -> Han
     if unit is None or unit.is_deleted:
         raise BESSNotFoundException(bess_unit_id)
 
-    stage_items = await _collect_stage_items(db, bess_unit_id)
+    stage_items = await _collect_stage_items(db, bess_unit_id, unit.product_model_id)
     _raise_if_pending_mandatory_items(stage_items, report_label="handover document data")
 
     engineer_signature_item, customer_signature_item = _find_signature_items(stage_items)
