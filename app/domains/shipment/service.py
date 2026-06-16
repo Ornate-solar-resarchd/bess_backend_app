@@ -44,16 +44,6 @@ STATUS_TO_BESS_STAGE: dict[ShipmentStatus, BESSStage] = {
     ShipmentStatus.SITE_ARRIVED: BESSStage.SITE_ARRIVED,
 }
 
-ALLOWED_SHIPMENT_TRANSITIONS: dict[ShipmentStatus, ShipmentStatus] = {
-    ShipmentStatus.CREATED: ShipmentStatus.PACKED,
-    ShipmentStatus.PACKED: ShipmentStatus.IN_TRANSIT,
-    ShipmentStatus.IN_TRANSIT: ShipmentStatus.ARRIVED,
-    ShipmentStatus.ARRIVED: ShipmentStatus.PORT_CLEARED,
-    ShipmentStatus.PORT_CLEARED: ShipmentStatus.WAREHOUSE_STORED,
-    ShipmentStatus.WAREHOUSE_STORED: ShipmentStatus.DISPATCHED_TO_SITE,
-    ShipmentStatus.DISPATCHED_TO_SITE: ShipmentStatus.SITE_ARRIVED,
-}
-
 PORT_CLEARED_DOCUMENT_TYPE = "PORT_CLEARED"
 
 
@@ -345,36 +335,8 @@ async def update_shipment_status(
     if shipment is None:
         raise APINotFoundException("Shipment not found")
 
-    if shipment.status != status:
-        next_status = ALLOWED_SHIPMENT_TRANSITIONS.get(shipment.status)
-        if next_status != status:
-            raise APIValidationException(
-                f"Invalid shipment status transition from {shipment.status.value} to {status.value}"
-            )
-
-    if status == ShipmentStatus.PACKED:
-        item_count = await shipment_repository.count_shipment_items(db, shipment_id)
-        if item_count < shipment.expected_quantity:
-            raise APIConflictException(
-                f"Cannot mark PACKED. expected_quantity={shipment.expected_quantity}, assigned_units={item_count}"
-            )
-        doc_count = await shipment_repository.count_documents(db, shipment_id)
-        if doc_count < 1:
-            raise APIConflictException("Cannot mark PACKED. Upload shipment documents first.")
-    if status == ShipmentStatus.PORT_CLEARED:
-        cleared_doc_count = await shipment_repository.count_documents_by_type(
-            db,
-            shipment_id,
-            PORT_CLEARED_DOCUMENT_TYPE,
-        )
-        if cleared_doc_count < 1:
-            raise APIConflictException(
-                "Cannot mark PORT_CLEARED. Upload at least one PORT_CLEARED document first."
-            )
-    if status == ShipmentStatus.WAREHOUSE_STORED and shipment.warehouse_id is None:
-        raise APIConflictException("Cannot mark WAREHOUSE_STORED. Assign warehouse to shipment first.")
     if status == ShipmentStatus.DISPATCHED_TO_SITE and shipment.site_id is None:
-        raise APIConflictException("Cannot mark DISPATCHED_TO_SITE. Assign site to shipment first.")
+        raise APIConflictException("Cannot dispatch to site. Assign a site to this shipment first.")
 
     async with atomic(db) as session:
         shipment.status = status
