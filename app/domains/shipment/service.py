@@ -145,9 +145,7 @@ async def assign_unit_to_shipment(
         raise APIConflictException(
             f"BESS unit {bess_unit_id} is already linked to shipment {existing_shipment_id}"
         )
-    normalized_order_id = order_id.strip()
-    if not normalized_order_id:
-        raise APIValidationException("order_id is required")
+    normalized_order_id = order_id.strip() if order_id else None
 
     async with atomic(db) as session:
         item = await shipment_repository.add_unit_to_shipment(
@@ -189,9 +187,7 @@ async def assign_units_to_shipment_bulk(
 
     seen_bess_ids: set[int] = set()
     for item in payload.items:
-        normalized_order_id = item.order_id.strip()
-        if not normalized_order_id:
-            raise APIValidationException("order_id is required for every item")
+        normalized_order_id = item.order_id.strip() if item.order_id else None
         if item.bess_unit_id in seen_bess_ids:
             raise APIValidationException(f"Duplicate bess_unit_id in request: {item.bess_unit_id}")
         seen_bess_ids.add(item.bess_unit_id)
@@ -209,7 +205,7 @@ async def assign_units_to_shipment_bulk(
     created_items = 0
     async with atomic(db) as session:
         for item in payload.items:
-            normalized_order_id = item.order_id.strip()
+            normalized_order_id = item.order_id.strip() if item.order_id else None
             created = await shipment_repository.add_unit_to_shipment(
                 session,
                 shipment_id,

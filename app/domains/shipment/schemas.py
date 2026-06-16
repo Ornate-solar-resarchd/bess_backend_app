@@ -36,7 +36,7 @@ class ShipmentRead(BaseModel):
 
 class ShipmentItemAssign(BaseModel):
     bess_unit_id: int
-    order_id: str
+    order_id: str | None = None
 
 
 class ShipmentBulkItemAssign(BaseModel):
