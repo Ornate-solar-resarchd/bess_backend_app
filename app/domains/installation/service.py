@@ -564,14 +564,6 @@ async def export_handover_pdf(db: AsyncSession, bess_unit_id: int) -> Path:
     engineer_signature_item, customer_signature_item = _find_signature_items(stage_items)
     engineer_signature_url = engineer_signature_item.photo_url if engineer_signature_item else None
     customer_signature_url = customer_signature_item.photo_url if customer_signature_item else None
-    if not engineer_signature_url:
-        raise APIConflictException(
-            "Cannot generate handover document. Site engineer signature photo is missing in FINAL_ACCEPTANCE checklist."
-        )
-    if not customer_signature_url:
-        raise APIConflictException(
-            "Cannot generate handover document. Customer signature photo is missing in FINAL_ACCEPTANCE checklist."
-        )
 
     engineer_name = await _resolve_user_name(
         db,
@@ -802,14 +794,6 @@ async def get_handover_document_data(db: AsyncSession, bess_unit_id: int) -> Han
     engineer_signature_item, customer_signature_item = _find_signature_items(stage_items)
     engineer_signature_url = engineer_signature_item.photo_url if engineer_signature_item else None
     customer_signature_url = customer_signature_item.photo_url if customer_signature_item else None
-    if not engineer_signature_url:
-        raise APIConflictException(
-            "Cannot prepare handover data. Site engineer signature photo is missing in FINAL_ACCEPTANCE checklist."
-        )
-    if not customer_signature_url:
-        raise APIConflictException(
-            "Cannot prepare handover data. Customer signature photo is missing in FINAL_ACCEPTANCE checklist."
-        )
 
     engineer_name = await _resolve_user_name(
         db,
