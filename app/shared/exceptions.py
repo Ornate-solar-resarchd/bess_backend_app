@@ -23,6 +23,11 @@ class APIValidationException(HTTPException):
         super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
+class APIUnauthorizedException(HTTPException):
+    def __init__(self, detail: str = "Invalid email or password") -> None:
+        super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+
+
 class BESSNotFoundException(APINotFoundException):
     def __init__(self, bess_unit_id: int) -> None:
         super().__init__(detail=f"BESS unit {bess_unit_id} not found")

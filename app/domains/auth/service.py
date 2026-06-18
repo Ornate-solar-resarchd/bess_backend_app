@@ -17,7 +17,7 @@ from app.domains.auth.schemas import LoginRequest, LoginResponse, RegisterReques
 from app.domains.rbac.models import Role, UserRole
 from app.domains.rbac.service import get_user_roles_permissions
 from app.shared.acid import atomic
-from app.shared.exceptions import APIConflictException, APIValidationException
+from app.shared.exceptions import APIConflictException, APIUnauthorizedException, APIValidationException
 
 
 async def register_user(db: AsyncSession, payload: RegisterRequest) -> User:
@@ -55,9 +55,9 @@ async def register_user(db: AsyncSession, payload: RegisterRequest) -> User:
 async def authenticate(db: AsyncSession, payload: LoginRequest) -> User:
     user = await db.scalar(select(User).where(User.email == payload.email.strip().lower()))
     if user is None or not verify_password(payload.password, user.hashed_password):
-        raise APIValidationException("Invalid email or password")
+        raise APIUnauthorizedException("Invalid email or password")
     if not user.is_active:
-        raise APIValidationException("User is inactive")
+        raise APIUnauthorizedException("User is inactive")
     return user
 
 
