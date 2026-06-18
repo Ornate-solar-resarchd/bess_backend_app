@@ -45,6 +45,9 @@ class ShipmentBulkItemAssign(BaseModel):
 
 class ShipmentStatusUpdate(BaseModel):
     status: ShipmentStatus
+    notes: str | None = None
+    warehouse_id: int | None = None
+    site_id: int | None = None
 
 
 class ShipmentWarehouseAssign(BaseModel):

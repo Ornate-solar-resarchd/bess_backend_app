@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI, Request
 from sqlalchemy import func, select
-from sqladmin import Admin, BaseView, ModelView, expose
+from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from starlette.responses import HTMLResponse
 from wtforms import validators as wtf_validators
 
 from app.core.database import AsyncSessionLocal, async_engine
@@ -17,7 +16,6 @@ from app.domains.installation.models import ChecklistResponse, ChecklistTemplate
 from app.domains.master.models import City, Country, ProductModel, Site, State, Warehouse
 from app.domains.rbac.models import Permission, Role, RolePermission, UserRole
 from app.domains.shipment.models import Shipment, ShipmentDocument, ShipmentItem
-from app.shared.enums import BESSStage
 
 
 class AdminAuthBackend(AuthenticationBackend):
@@ -308,7 +306,6 @@ class BESSUnitAdmin(ModelView, model=BESSUnit):
 
     column_list = [
         BESSUnit.id,
-        BESSUnit.serial_number,
         BESSUnit.current_stage,
         "product_model",
         "country",
@@ -320,12 +317,11 @@ class BESSUnitAdmin(ModelView, model=BESSUnit):
         BESSUnit.is_deleted,
         BESSUnit.created_at,
     ]
-    column_searchable_list = [BESSUnit.serial_number, BESSUnit.site_address]
-    column_sortable_list = [BESSUnit.id, BESSUnit.serial_number, BESSUnit.current_stage, BESSUnit.is_active, BESSUnit.created_at]
+    column_searchable_list = [BESSUnit.site_address]
+    column_sortable_list = [BESSUnit.id, BESSUnit.current_stage, BESSUnit.is_active, BESSUnit.created_at]
     column_default_sort = [(BESSUnit.created_at, True)]
     column_labels = {
         BESSUnit.id: "ID",
-        BESSUnit.serial_number: "Serial Number",
         BESSUnit.current_stage: "Stage",
         "product_model": "Product Model",
         "country": "Country",
@@ -340,7 +336,7 @@ class BESSUnitAdmin(ModelView, model=BESSUnit):
         BESSUnit.created_at: "Registered At",
     }
     column_export_list = [
-        BESSUnit.id, BESSUnit.serial_number, BESSUnit.current_stage,
+        BESSUnit.id, BESSUnit.current_stage,
         BESSUnit.site_address, BESSUnit.is_active, BESSUnit.created_at,
     ]
     form_columns = [
@@ -783,215 +779,6 @@ class CommissioningRecordAdmin(ModelView, model=CommissioningRecord):
     page_size = 25
 
 
-# ─── Bulk Assign Units ────────────────────────────────────────────────────────
-
-class BulkAssignUnitsView(BaseView):
-    name = "Assign Units to Shipment"
-    icon = "fa-solid fa-boxes-stacked"
-    category = "Shipments"
-
-    @expose("/bulk-assign-units", methods=["GET", "POST"])
-    async def bulk_assign_page(self, request: Request) -> HTMLResponse:
-        message: str | None = None
-        errors: list[str] = []
-        selected_shipment_id: str | None = None
-
-        async with AsyncSessionLocal() as session:
-            assigned_subq = select(ShipmentItem.bess_unit_id)
-            shipments = (
-                await session.execute(select(Shipment).order_by(Shipment.created_at.desc()))
-            ).scalars().all()
-            units = (
-                await session.execute(
-                    select(BESSUnit)
-                    .where(BESSUnit.is_deleted == False)  # noqa: E712
-                    .where(~BESSUnit.id.in_(assigned_subq))
-                    .order_by(BESSUnit.serial_number)
-                )
-            ).scalars().all()
-
-            if request.method == "POST":
-                form = await request.form()
-                selected_shipment_id = form.get("shipment_id")
-                unit_ids = form.getlist("unit_ids")
-                order_id_raw = form.get("order_id", "")
-                order_id = order_id_raw.strip() if order_id_raw else None
-
-                if not selected_shipment_id:
-                    errors.append("Please select a shipment.")
-                elif not unit_ids:
-                    errors.append("Please select at least one BESS unit.")
-                else:
-                    shipment_id_int = int(selected_shipment_id)
-                    assigned_count = 0
-                    skip_count = 0
-
-                    for uid_str in unit_ids:
-                        uid = int(uid_str)
-                        existing = await session.scalar(
-                            select(ShipmentItem).where(ShipmentItem.bess_unit_id == uid)
-                        )
-                        if existing:
-                            skip_count += 1
-                            continue
-                        session.add(ShipmentItem(
-                            shipment_id=shipment_id_int,
-                            bess_unit_id=uid,
-                            order_id=order_id,
-                        ))
-                        unit_obj = await session.get(BESSUnit, uid)
-                        if unit_obj and not unit_obj.is_deleted:
-                            unit_obj.current_stage = BESSStage.SHIPMENT_ASSIGNED
-                        assigned_count += 1
-
-                    await session.commit()
-
-                    if assigned_count:
-                        message = f"Assigned {assigned_count} BESS unit(s) to shipment."
-                        if skip_count:
-                            message += f" {skip_count} already assigned unit(s) were skipped."
-                    else:
-                        errors.append("No units were assigned. They may already be linked to other shipments.")
-
-                    # Reload available units after assignment
-                    units = (
-                        await session.execute(
-                            select(BESSUnit)
-                            .where(BESSUnit.is_deleted == False)  # noqa: E712
-                            .where(~BESSUnit.id.in_(select(ShipmentItem.bess_unit_id)))
-                            .order_by(BESSUnit.serial_number)
-                        )
-                    ).scalars().all()
-
-        return HTMLResponse(_render_bulk_assign_html(
-            shipments=shipments,
-            units=units,
-            message=message,
-            errors=errors,
-            selected_shipment_id=selected_shipment_id,
-        ))
-
-
-def _render_bulk_assign_html(
-    shipments: list,
-    units: list,
-    message: str | None,
-    errors: list[str],
-    selected_shipment_id: str | None,
-) -> str:
-    shipment_options = "\n".join(
-        f'<option value="{s.id}" {"selected" if str(s.id) == selected_shipment_id else ""}>'
-        f'{s.shipment_code} — {s.status.value} ({s.expected_quantity} units expected)'
-        f'</option>'
-        for s in shipments
-    )
-    unit_rows = "\n".join(
-        f"""<label class="unit-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;
-            border:1px solid #dee2e6;border-radius:6px;cursor:pointer;margin-bottom:6px;
-            background:#fff;transition:background .15s;">
-          <input type="checkbox" name="unit_ids" value="{u.id}"
-            style="width:16px;height:16px;accent-color:#0d6efd;">
-          <span style="font-family:monospace;font-size:13px;font-weight:600;">{u.serial_number}</span>
-          <span style="color:#6c757d;font-size:12px;">ID #{u.id} · Stage: {u.current_stage.value}</span>
-        </label>"""
-        for u in units
-    )
-    alert_html = ""
-    if message:
-        alert_html = f'<div style="background:#d1e7dd;color:#0a3622;border:1px solid #a3cfbb;border-radius:6px;padding:12px 16px;margin-bottom:16px;">{message}</div>'
-    if errors:
-        err_items = "".join(f"<li>{e}</li>" for e in errors)
-        alert_html += f'<div style="background:#f8d7da;color:#58151c;border:1px solid #f1aeb5;border-radius:6px;padding:12px 16px;margin-bottom:16px;"><ul style="margin:0;padding-left:18px;">{err_items}</ul></div>'
-
-    no_units_msg = "" if units else '<p style="color:#6c757d;font-style:italic;">All available BESS units have already been assigned to shipments.</p>'
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Assign Units to Shipment · UnityESS Admin</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <style>
-    body {{ background:#f4f6fb; }}
-    .page-card {{ background:#fff; border-radius:10px; box-shadow:0 2px 12px rgba(0,0,0,.08); padding:32px; max-width:860px; margin:40px auto; }}
-    .unit-row:hover {{ background:#f0f4ff !important; }}
-    #select-all-btn {{ cursor:pointer; }}
-    .search-box {{ margin-bottom:12px; }}
-  </style>
-</head>
-<body>
-<div class="page-card">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-    <a href="/admin" style="color:#6c757d;font-size:13px;text-decoration:none;">
-      <i class="fa-solid fa-arrow-left"></i> Back to Admin
-    </a>
-  </div>
-  <h4 style="font-weight:700;margin-bottom:4px;"><i class="fa-solid fa-boxes-stacked" style="color:#0d6efd;margin-right:8px;"></i>Assign Units to Shipment</h4>
-  <p style="color:#6c757d;font-size:13px;margin-bottom:24px;">
-    Select a shipment and one or more BESS units to assign in a single operation.
-    Only unassigned units are shown below.
-  </p>
-
-  {alert_html}
-
-  <form method="POST" action="/admin/bulk-assign-units">
-    <div class="mb-4">
-      <label class="form-label fw-semibold">Shipment</label>
-      <select name="shipment_id" class="form-select" required>
-        <option value="">— Select a shipment —</option>
-        {shipment_options}
-      </select>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label fw-semibold">Order ID <span style="font-weight:400;color:#6c757d;">(optional — applies to all selected units)</span></label>
-      <input type="text" name="order_id" class="form-control" placeholder="e.g. ORD-2025-001">
-    </div>
-
-    <div class="mb-4">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <label class="form-label fw-semibold mb-0">
-          BESS Units <span style="color:#6c757d;font-weight:400;">({len(units)} available)</span>
-        </label>
-        <button type="button" id="select-all-btn" class="btn btn-sm btn-outline-secondary" onclick="toggleAll(this)">
-          Select All
-        </button>
-      </div>
-      <input type="text" id="unit-search" class="form-control search-box" placeholder="Search serial number…" oninput="filterUnits(this.value)">
-      <div id="units-container" style="max-height:380px;overflow-y:auto;padding:2px;">
-        {unit_rows}
-        {no_units_msg}
-      </div>
-    </div>
-
-    <div style="display:flex;gap:12px;">
-      <button type="submit" class="btn btn-primary px-4" {"disabled" if not units else ""}>
-        <i class="fa-solid fa-link me-2"></i>Assign Selected Units
-      </button>
-      <a href="/admin/shipmentitem/list" class="btn btn-outline-secondary">View All Shipment Items</a>
-    </div>
-  </form>
-</div>
-
-<script>
-function toggleAll(btn) {{
-  const boxes = document.querySelectorAll('input[name="unit_ids"]:not([style*="display:none"])');
-  const allChecked = Array.from(boxes).every(b => b.checked);
-  boxes.forEach(b => b.checked = !allChecked);
-  btn.textContent = allChecked ? 'Select All' : 'Deselect All';
-}}
-
-function filterUnits(query) {{
-  const q = query.toLowerCase();
-  document.querySelectorAll('.unit-row').forEach(row => {{
-    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-  }});
-}}
-</script>
-</body>
-</html>"""
 
 
 # ─── Setup ────────────────────────────────────────────────────────────────────
@@ -1030,7 +817,6 @@ def setup_admin(app: FastAPI, secret_key: str) -> None:
     admin.add_view(ShipmentAdmin)
     admin.add_view(ShipmentItemAdmin)
     admin.add_view(ShipmentDocumentAdmin)
-    admin.add_base_view(BulkAssignUnitsView)
 
     # Checklists
     admin.add_view(ChecklistTemplateAdmin)
