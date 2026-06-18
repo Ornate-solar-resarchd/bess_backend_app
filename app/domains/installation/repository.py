@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import Select, and_, func, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.engineer.models import Engineer, SiteAssignment
@@ -31,9 +31,14 @@ class ChecklistRepository:
     async def get_templates_by_stage(
         self, db: AsyncSession, stage: BESSStage, product_model_id: int | None = None
     ) -> list[ChecklistTemplate]:
+        model_filter = (
+            or_(ChecklistTemplate.product_model_id == product_model_id, ChecklistTemplate.product_model_id.is_(None))
+            if product_model_id is not None
+            else ChecklistTemplate.product_model_id.is_(None)
+        )
         stmt: Select[tuple[ChecklistTemplate]] = (
             select(ChecklistTemplate)
-            .where(ChecklistTemplate.stage == stage, ChecklistTemplate.product_model_id == product_model_id)
+            .where(ChecklistTemplate.stage == stage, model_filter)
             .order_by(ChecklistTemplate.order_index.asc(), ChecklistTemplate.id.asc())
         )
         return list((await db.scalars(stmt)).all())
@@ -79,8 +84,14 @@ class ChecklistRepository:
                     ChecklistResponse.bess_unit_id == bess_unit_id,
                 ),
             )
-            .where(ChecklistTemplate.stage == stage, ChecklistTemplate.product_model_id == product_model_id)
-            .order_by(ChecklistTemplate.order_index.asc(), ChecklistTemplate.id.asc())
+        )
+        model_filter = (
+            or_(ChecklistTemplate.product_model_id == product_model_id, ChecklistTemplate.product_model_id.is_(None))
+            if product_model_id is not None
+            else ChecklistTemplate.product_model_id.is_(None)
+        )
+        stmt = stmt.where(ChecklistTemplate.stage == stage, model_filter).order_by(
+            ChecklistTemplate.order_index.asc(), ChecklistTemplate.id.asc()
         )
         rows = (await db.execute(stmt)).all()
         items: list[ChecklistJoinedItem] = []
@@ -146,9 +157,14 @@ class ChecklistRepository:
     async def checklist_count_for_stage(
         self, db: AsyncSession, stage: BESSStage, product_model_id: int | None = None
     ) -> int:
+        model_filter = (
+            or_(ChecklistTemplate.product_model_id == product_model_id, ChecklistTemplate.product_model_id.is_(None))
+            if product_model_id is not None
+            else ChecklistTemplate.product_model_id.is_(None)
+        )
         stmt = select(func.count(ChecklistTemplate.id)).where(
             ChecklistTemplate.stage == stage,
-            ChecklistTemplate.product_model_id == product_model_id,
+            model_filter,
         )
         return int(await db.scalar(stmt) or 0)
 
