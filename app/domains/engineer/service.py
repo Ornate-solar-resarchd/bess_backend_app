@@ -21,7 +21,7 @@ from app.domains.engineer.schemas import (
 from app.domains.installation.repository import checklist_repository
 from app.shared.acid import atomic
 from app.shared.enums import AssignmentStatus, BESSStage, SITE_STAGES, STAGE_TO_SPECIALIZATION, STAGE_TRANSITIONS, Specialization
-from app.shared.exceptions import APINotFoundException, BESSNotFoundException
+from app.shared.exceptions import APIConflictException, APINotFoundException, BESSNotFoundException
 
 
 async def create_engineer(db: AsyncSession, payload: EngineerCreate, current_user: User) -> Engineer:
@@ -150,6 +150,18 @@ async def manual_assign_engineer(
     engineer = await db.get(Engineer, engineer_id)
     if engineer is None:
         raise APINotFoundException("Engineer not found")
+
+    # Prevent duplicate: block if an active assignment already exists for this unit+stage
+    existing = await engineer_repository.get_existing_assignment_for_stage(db, bess_unit_id, stage)
+    if existing is not None and existing.status in ACTIVE_ASSIGNMENT_STATUSES:
+        if existing.engineer_id == engineer_id:
+            raise APIConflictException(
+                f"This unit already has an active {stage.value} assignment for this engineer."
+            )
+        raise APIConflictException(
+            f"This unit already has an active {stage.value} assignment. "
+            "Resolve or complete it before reassigning."
+        )
 
     async with atomic(db) as session:
         assignment = await engineer_repository.create_assignment(
